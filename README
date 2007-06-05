@@ -1,0 +1,15 @@
+Index file specifications :
+Magic Number : 0x534A2D494E444558 (SJ-INDEX in hexadecimal) -> 64 bits
+Version      : 0x0000                                       -> 4 bits
+Index Data : 
+        PTS                                                 -> 64 bits 
+        DTS                                                 -> 64 bits
+        PES offset                                          -> 64 bits
+        Frame number in timecode                            -> 8 bits
+        Seconds number in timecode                          -> 8 bits
+        Minutes number in timecode                          -> 8 bits
+        Hours number in timecode                            -> 8 bits
+
+EOF markers  : 0xADDEDEFAADDEADDE                           -> 64 bits
+               0  (reserved)                                -> 32 bits
+               0xADDE                                       -> 32 bits
