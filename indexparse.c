@@ -34,7 +34,7 @@ int main(int argc, char **argv)
     get_buffer(mpeg, buffer, 16); \
     av_hex_dump(stdout, buffer, 16); \*/
     printf("magic %llx\n", get_le64(pb));
-    printf("Version : %d\n", get_le16(pb));
+    printf("Version : %d\n", get_byte(pb));
     while (!url_feof(pb)) {
         printf("dts %lld\n", get_le64(pb));
         printf("pts %lld\n", get_le64(pb));

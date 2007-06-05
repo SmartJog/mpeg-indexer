@@ -1,6 +1,6 @@
 Index file specifications :
 Magic Number : 0x534A2D494E444558 (SJ-INDEX in hexadecimal) -> 64 bits
-Version      : 0x0000                                       -> 4 bits
+Version      : 0x0000                                       -> 8 bits
 Index Data : 
         PTS                                                 -> 64 bits 
         DTS                                                 -> 64 bits

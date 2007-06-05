@@ -99,7 +99,7 @@ static int write_index(StreamContext *stcontext)
 
     qsort(stcontext->index, stcontext->frame_num, sizeof(Index), ind_sort_by_pts);
     put_le64(&indexpb, 0x534A2D494E444558LL);       // Magic number : SJ-INDEX in hex
-    put_le16(&indexpb, 0x00000000);                     // Version
+    put_byte(&indexpb, 0x00000000);                     // Version
     for (i = 0; i < stcontext->frame_num; i++) {
         Index *ind = &stcontext->index[i];
         put_le64(&indexpb, ind->pts);               // PTS
@@ -235,7 +235,7 @@ static int find_timecode(Index *ind, AVStream *st, AVPacket *pkt, int *kf, Timec
                     ind->timecode.minutes = (ind->timecode.minutes + 1) % 60;
 
                 }
-//                printf("ind->timecode.minutes %10 : %d\tind->timecode.seconds %d\tind->timecode.frames %d\n",ind->timecode.minutes,ind->timecode.seconds,ind->timecode.frames);
+                printf("ind->timecode.minutes %10 : %d\tind->timecode.seconds %d\tind->timecode.frames %d\n",ind->timecode.minutes %10,ind->timecode.seconds,ind->timecode.frames);
                 if ((drop) && (ind->timecode.minutes %10) && !(ind->timecode.seconds) && (ind->timecode.frames == 0)){
                     printf ("frame dropped, there will be no timecode for this frame as it will not be displayed\n");
 //                    (*drop_diff)++;
