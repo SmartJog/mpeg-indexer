@@ -10,6 +10,4 @@ Index Data :
         Minutes number in timecode                          -> 8 bits
         Hours number in timecode                            -> 8 bits
 
-EOF markers  : 0xADDEDEFAADDEADDE                           -> 64 bits
-               0  (reserved)                                -> 32 bits
-               0xADDE                                       -> 32 bits
+

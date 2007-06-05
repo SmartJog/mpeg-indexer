@@ -64,16 +64,6 @@ static int ind_sort_by_pts(const void *ind1, const void *ind2)
     return ((Index *)ind1)->pts - ((Index *)ind2)->pts;
 }
 
-static int write_eof_marker(StreamContext *s)
-{
-    ByteIOContext *pb = &s->opb;
-    put_le64(pb, 0xADDEDEFAADDEADDELL);
-    put_le32(pb, 0); /* reserved */
-    put_le32(pb, 0xADDE);  /* crc not implemented */
-    put_flush_packet(pb);
-    return 0;
-}
-
 extern AVInputFormat mpegps_demuxer;
 
 extern const uint8_t *ff_find_start_code(const uint8_t *p, const uint8_t *end, uint32_t *state);
@@ -109,7 +99,7 @@ static int write_index(StreamContext *stcontext)
 
     qsort(stcontext->index, stcontext->frame_num, sizeof(Index), ind_sort_by_pts);
     put_le64(&indexpb, 0x534A2D494E444558LL);       // Magic number : SJ-INDEX in hex
-    put_le16(&indexpb, 0x0000);                     // Version
+    put_le16(&indexpb, 0x00000000);                     // Version
     for (i = 0; i < stcontext->frame_num; i++) {
         Index *ind = &stcontext->index[i];
         put_le64(&indexpb, ind->pts);               // PTS
@@ -134,7 +124,6 @@ static int write_trailer(StreamContext *s)
 {
     if (write_index(s) < 0)
         return -1;
-    write_eof_marker(s);
     return 0;
 }
 
@@ -215,15 +204,13 @@ static int find_timecode(Index *ind, AVStream *st, AVPacket *pkt, int *kf, Timec
             } 
             if (c == GOP_START_CODE) { // found GOP header => I-frame follows 
                 drop = !!(buf[j] & 0x80);
-                printf("drop %d\n", drop);
-                last_key_frame->hours   = ind->timecode.hours   = (buf[j] >> 2) & 0x1f;
                 last_key_frame->minutes = ind->timecode.minutes = (buf[j] & 0x03) << 4 | (buf[j+1] >> 4);
                 last_key_frame->seconds = ind->timecode.seconds = (buf[j+1] & 0x07) << 3 | (buf[j+2] >> 5);
                 // increment by 5 frames for debugging purpose 
                 last_key_frame->frames  = ind->timecode.frames  = ((buf[j+2] & 0x1f) << 1 | (buf[j+3] >> 7));
                 (*kf)++;
                 (*drop_diff) = 0;
-                printf("\nGOP timecode :\t%02d:%02d:%02d:%02d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames);
+                printf("\nGOP timecode :\t%02d:%02d:%02d:%02d\tdrop : %d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames, drop);
             }
             if (d == PICTURE_START_CODE) { // found picture start code
                 uint32_t temp_ref = 0;
@@ -236,7 +223,6 @@ static int find_timecode(Index *ind, AVStream *st, AVPacket *pkt, int *kf, Timec
                 frame_type = buf[i+1];
                 frame_type = (frame_type >> 3) & 0x7;
                 printf("\nframe type : %x, temp_ref : %d\n", frame_type, temp_ref);
-                drop = 1;
                 // calculation of timecode for current frame
                 ind->timecode.frames  = ((last_key_frame->frames  + temp_ref) % round_fps) - *drop_diff;
                 ind->timecode.seconds = ((int)(last_key_frame->seconds + ((last_key_frame->frames + temp_ref) / fps))) % 60;
@@ -249,9 +235,10 @@ static int find_timecode(Index *ind, AVStream *st, AVPacket *pkt, int *kf, Timec
                     ind->timecode.minutes = (ind->timecode.minutes + 1) % 60;
 
                 }
-                if ((drop) && (ind->timecode.minutes %10) && !(ind->timecode.seconds) && (ind->timecode.frames == 0) && (*drop_diff < 2 )){
+//                printf("ind->timecode.minutes %10 : %d\tind->timecode.seconds %d\tind->timecode.frames %d\n",ind->timecode.minutes,ind->timecode.seconds,ind->timecode.frames);
+                if ((drop) && (ind->timecode.minutes %10) && !(ind->timecode.seconds) && (ind->timecode.frames == 0)){
                     printf ("frame dropped, there will be no timecode for this frame as it will not be displayed\n");
-                    (*drop_diff)++;
+//                    (*drop_diff)++;
                 }
                 printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames);
             } 
