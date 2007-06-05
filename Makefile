@@ -1,0 +1,27 @@
+CC=gcc
+CFLAGS=-Wall -O3 -fomit-frame-pointer
+LDFLAGS=-lavformat
+
+all:		indexer indexparse
+
+safwrap: indexer.o
+		$(CC) $(CFLAGS) $^  -o $@ $(LDFLAGS)
+
+vixparse: indexparse.o
+		$(CC) $(CFLAGS) $^  -o $@ $(LDFLAGS)
+
+.c.o:
+		$(CC) $(CFLAGS) -c $< -o $@
+
+cleanall:	clean
+
+install: indexer indexparse
+		install -d $(DESTDIR)
+		install -m 644 indexer indexparse $(DESTDIR)/usr/bin
+
+clean:
+		rm -f *.o *~
+		rm -f indexer indexparse
+
+tags:
+		etags *.c *.h
