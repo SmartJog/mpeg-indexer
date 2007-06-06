@@ -4,10 +4,10 @@ LDFLAGS=-lavformat
 
 all:		indexer indexparse
 
-safwrap: indexer.o
+indexer: indexer.o
 		$(CC) $(CFLAGS) $^  -o $@ $(LDFLAGS)
 
-vixparse: indexparse.o
+indexparse: indexparse.o
 		$(CC) $(CFLAGS) $^  -o $@ $(LDFLAGS)
 
 .c.o:
