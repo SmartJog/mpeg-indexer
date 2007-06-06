@@ -212,7 +212,7 @@ static int find_timecode(Index *ind, AVStream *st, AVPacket *pkt, int *kf, Timec
                 last_key_frame->seconds = ind->timecode.seconds = (buf[j+1] & 0x07) << 3 | (buf[j+2] >> 5);
                 last_key_frame->frames  = ind->timecode.frames  = ((buf[j+2] & 0x1f) << 1 | (buf[j+3] >> 7));
                 (*kf)++;
-                //(*drop_diff) = 0;
+                (*drop_diff) = 0;
                 printf("\nGOP timecode :\t%02d:%02d:%02d:%02d\tdrop : %d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames, drop);
             }
             if (d == PICTURE_START_CODE) { // found picture start code
@@ -228,6 +228,8 @@ static int find_timecode(Index *ind, AVStream *st, AVPacket *pkt, int *kf, Timec
                 printf("\nframe type : %x, temp_ref : %d\n", frame_type, temp_ref);
                 // calculation of timecode for current frame
                 ind->timecode.frames  = ((last_key_frame->frames  + temp_ref) % round_fps);
+                if (*drop_diff)
+                    ind->timecode.frames += 2;
                 ind->timecode.seconds = ((int)(last_key_frame->seconds + ((last_key_frame->frames + temp_ref) / fps))) % 60;
                 ind->timecode.minutes = ((int)(last_key_frame->minutes + ((last_key_frame->frames + temp_ref) / (fps * 60)))) % 60;
                 ind->timecode.hours   = ((int)(last_key_frame->hours   + ((last_key_frame->frames + temp_ref) / (fps * 3600)))) % 24;
@@ -238,15 +240,11 @@ static int find_timecode(Index *ind, AVStream *st, AVPacket *pkt, int *kf, Timec
                     ind->timecode.minutes = (ind->timecode.minutes + 1) % 60;
 
                 }
-    //            printf("drop : %02d\tind->timecode.minutes %10 : %02d\tind->timecode.seconds %02d\tind->timecode.frames %02d\n",drop,ind->timecode.minutes %10,ind->timecode.seconds,ind->timecode.frames);
-               /* if ((drop) && (ind->timecode.minutes %10) && !(ind->timecode.seconds) && ((ind->timecode.frames == 0) || (ind->timecode.frames == 1))){
-                    printf ("frame dropped, there will be no timecode for this frame as it will not be displayed\n");
-                    ind->timecode.frames  = 0; 
-                    ind->timecode.seconds = 0;
-                    ind->timecode.minutes = 0;
-                    ind->timecode.hours   = 0;
-
-                }*/
+                if ((drop) && (ind->timecode.minutes %10) && !(ind->timecode.seconds) && ((ind->timecode.frames == 0) || (ind->timecode.frames == 1))){
+                    printf ("frame dropped\n");
+                    ind->timecode.frames  += 2;
+                    (*drop_diff) = 1;
+                }
                 printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames);
             } 
         }
