@@ -102,10 +102,7 @@ static int write_index(StreamContext *stcontext)
     put_byte(&indexpb, 0x00000000);                     // Version
     for (i = 0; i < stcontext->frame_num; i++) {
         Index *ind = &stcontext->index[i];
-        if (!ind->timecode.hours && !ind->timecode.minutes && !ind->timecode.seconds && !ind->timecode.frames){
-            printf("NIARRRRRK");
-        }
-        printf("\ntimecode :\t%02d:%02d:%02d:%02d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames);
+        //printf("\ntimecode :\t%02d:%02d:%02d:%02d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames);
         put_le64(&indexpb, ind->pts);               // PTS
         put_le64(&indexpb, ind->dts);               // DTS
         put_le64(&indexpb, ind->pes_offset);        // PES offset
@@ -213,7 +210,7 @@ static int find_timecode(Index *ind, AVStream *st, AVPacket *pkt, int *kf, Timec
                 last_key_frame->frames  = ind->timecode.frames  = ((buf[j+2] & 0x1f) << 1 | (buf[j+3] >> 7));
                 (*kf)++;
                 (*drop_diff) = 0;
-                printf("\nGOP timecode :\t%02d:%02d:%02d:%02d\tdrop : %d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames, drop);
+//                printf("\nGOP timecode :\t%02d:%02d:%02d:%02d\tdrop : %d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames, drop);
             }
             if (d == PICTURE_START_CODE) { // found picture start code
                 uint32_t temp_ref = 0;
@@ -244,7 +241,7 @@ static int find_timecode(Index *ind, AVStream *st, AVPacket *pkt, int *kf, Timec
                     ind->timecode.frames  += 2;
                     (*drop_diff) = 1;
                 }
-                printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames);
+//                printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames);
             } 
         }
     }
@@ -260,7 +257,6 @@ int main(int argc, char *argv[])
     uint8_t *buffer;
     int i, ret;
     (void)buffer;
-    memset(&stcontext, 0, sizeof(stcontext));
     uint32_t state = -1;
     int kf = 0;
     int closed_gop = 0;
@@ -268,6 +264,7 @@ int main(int argc, char *argv[])
     float fps = 0;
     Timecode last_key;
 
+    memset(&stcontext, 0, sizeof(stcontext));
     memset(&last_key, 0, sizeof (last_key));
 
     if (argc < 3) {
@@ -314,7 +311,8 @@ int main(int argc, char *argv[])
         printf("no video streams in input file\n");
         return 1;
     }
-
+    stcontext.need_pic_type = -1;
+    stcontext.need_gop = -1;
     stcontext.frame_num = 0;
     stcontext.fc = ic;
 #ifdef DEBUG
@@ -343,49 +341,67 @@ int main(int argc, char *argv[])
         if (pkt.dts != AV_NOPTS_VALUE) {
             stcontext.current_dts[st->index] = pkt.dts;
             stcontext.current_pts[st->index] = pkt.pts;
-        }
-        for (i = 0; i < pkt.size; i++) {
-            Index *ind = &stcontext.index[stcontext.frame_num];
-            i = ff_find_start_code(pkt.data + i, pkt.data + pkt.size, &state) - pkt.data - 1;
-//            printf("state : %x\n", state);
-            if (state == SEQ_START_CODE){
-                if (!fps){
-                    fps = get_frame_rate(st, &pkt);
-                    printf("fps %f\n", fps);
-                }
-                ind->seq = 1;
-                ind_set(&stcontext, ind, &pkt, st, i);
-            } else if (state == GOP_START_CODE) {
-               ind->gop = 1;
-                if (!ind->seq)
+        } 
+        if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
+            //printf("pkt dts %lld, pkt pts %lld\n", pkt.dts, pkt.pts);
+            if (stcontext.need_pic_type != -1) {
+                stcontext.index[stcontext.frame_num-1].pic_type = (pkt.data[stcontext.need_pic_type] >> 3) & 7;
+                printf("pic type %d\n", stcontext.index[stcontext.frame_num-1].pic_type);
+                stcontext.need_pic_type = -1;
+                assert(stcontext.index[stcontext.frame_num-1].pic_type > 0 &&
+                        stcontext.index[stcontext.frame_num-1].pic_type < 4);
+            }
+            if (stcontext.need_gop != -1) {
+                closed_gop = !!(pkt.data[stcontext.need_gop] & 0x40);
+                printf("gop %d\n", closed_gop);
+                stcontext.need_gop = -1;
+            }
+            for (i = 0; i < pkt.size; i++) {
+                Index *ind = &stcontext.index[stcontext.frame_num];
+                i = ff_find_start_code(pkt.data + i, pkt.data + pkt.size, &state) - pkt.data - 1;
+//                printf("state : %x\n", state);
+                if (state == SEQ_START_CODE){
+                    if (!fps){
+                        fps = get_frame_rate(st, &pkt);
+                        printf("fps %f\n", fps);
+                    }
+                    ind->seq = 1;
                     ind_set(&stcontext, ind, &pkt, st, i);
-                if (i + 5 > pkt.size) {
-                    stcontext.need_gop = 4 - pkt.size + i;
-                    printf("could not get GOP type %d\n", stcontext.need_gop);
-                } else {
-                    closed_gop = !!(pkt.data[i + 4] & 0x40);
-//                    printf("closed gop %d\n", ind->gop);
-                }
-            } else if (state == PICTURE_START_CODE) {
-                if (!ind->seq && !ind->gop)
-                    ind_set(&stcontext, ind, &pkt, st, i);
-                if (i + 3 > pkt.size) {
-                    stcontext.need_pic_type = 2 - pkt.size + i;
-                    ind->pic_type = 0;
-                    printf("could not get picture type, need %d\n", stcontext.need_pic_type);
-                } else {
-                    ind->pic_type = (pkt.data[i + 2] >> 3) & 7;
-                    assert(ind->pic_type > 0 && ind->pic_type < 4);
-                    //printf("frame num %d, data %llx, pic type %d, dts %lld\n", saf.frame_num, vix->pic_data, vix->pic_type, vix->dts);
-                }
-                ind->closed_gop = closed_gop;
-                stcontext.frame_num++;
-                find_timecode(ind, st, &pkt, &kf, &last_key, fps, &drop_diff);
-                if (!(stcontext.frame_num % 1000))
-                    stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
-                stcontext.index[stcontext.frame_num].seq = 0;
-                stcontext.index[stcontext.frame_num].gop = 0;
-            } 
+                } else if (state == GOP_START_CODE) {
+                ind->gop = 1;
+                    if (!ind->seq)
+                        ind_set(&stcontext, ind, &pkt, st, i);
+                    if (i + 5 > pkt.size) {
+                        stcontext.need_gop = 4 - pkt.size + i;
+                        printf("could not get GOP type, need %d\n", stcontext.need_gop);
+                    } else {
+                        closed_gop = !!(pkt.data[i + 4] & 0x40);
+//                      printf("closed gop %d\n", ind->gop);
+                    }
+                } else if (state == PICTURE_START_CODE) {
+                    if (!ind->seq && !ind->gop)
+                        ind_set(&stcontext, ind, &pkt, st, i);
+//                      printf("i : %d, pkt size %d\t",i , pkt.size);
+                    if (i + 3 > pkt.size) {
+                        stcontext.need_pic_type = 2 - pkt.size + i;
+                        ind->pic_type = 0;
+                        printf("could not get picture type, need %d\n", stcontext.need_pic_type);
+                    } else {
+                        ind->pic_type = (pkt.data[i + 2] >> 3) & 7;
+//                      printf("frame num %d, pic type %d, dts %lld\n", stcontext.frame_num, ind->pic_type, ind->dts);
+                        assert(ind->pic_type > 0 && ind->pic_type < 4);
+                    }
+                    if (!ind->pts)
+                        ind->pts=ind->dts;
+                    ind->closed_gop = closed_gop;
+                    stcontext.frame_num++;
+                    find_timecode(ind, st, &pkt, &kf, &last_key, fps, &drop_diff);
+                    if (!(stcontext.frame_num % 1000))
+                        stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
+                    stcontext.index[stcontext.frame_num].seq = 0;
+                    stcontext.index[stcontext.frame_num].gop = 0;
+                } 
+            }
         }
         av_free_packet(&pkt);
     }
