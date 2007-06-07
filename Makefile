@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-Wall -O3 -fomit-frame-pointer
 LDFLAGS=-lavformat
-
+DESTDIR = /
 all:		indexer indexparse
 
 indexer: indexer.o
@@ -17,7 +17,7 @@ cleanall:	clean
 
 install: indexer indexparse
 		install -d $(DESTDIR)
-		install -m 644 indexer indexparse $(DESTDIR)/usr/bin
+		install -m 755 indexer indexparse $(DESTDIR)/usr/bin
 
 clean:
 		rm -f *.o *~

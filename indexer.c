@@ -191,13 +191,13 @@ static int get_frame_rate(AVStream *st, AVPacket *pkt)
     return -1;
 }
 
-static int find_timecode(Index *ind, AVStream *st, AVPacket *pkt, int *kf, Timecode *last_key_frame, float fps, int *drop_diff)
+static int find_timecode(Index *ind, AVStream *st, AVPacket *pkt, int *kf, Timecode *last_key_frame, float fps, uint8_t *drop_diff)
 {
     if (st) {
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
             uint8_t *buf = pkt->data;
             uint32_t c = -1, d = -1;
-            int i, j, drop;
+            int i, j, drop = 0;
             for(i = 0; i < pkt->size - 4 && d != PICTURE_START_CODE; i++) {
                 if (c != GOP_START_CODE){
                     c = (c<<8) + buf[i]; 
@@ -225,7 +225,6 @@ static int find_timecode(Index *ind, AVStream *st, AVPacket *pkt, int *kf, Timec
                 temp_ref = (temp_ref>>6);
                 frame_type = buf[i+1];
                 frame_type = (frame_type >> 3) & 0x7;
-                printf("\nframe type : %x, temp_ref : %d\n", frame_type, temp_ref);
                 // calculation of timecode for current frame
                 ind->timecode.frames  = ((last_key_frame->frames  + temp_ref) % round_fps);
                 if (*drop_diff)
@@ -241,7 +240,7 @@ static int find_timecode(Index *ind, AVStream *st, AVPacket *pkt, int *kf, Timec
 
                 }
                 if ((drop) && (ind->timecode.minutes %10) && !(ind->timecode.seconds) && ((ind->timecode.frames == 0) || (ind->timecode.frames == 1))){
-                    printf ("frame dropped\n");
+                    printf ("dropping numbers 0 and 1 from timecode count\n");
                     ind->timecode.frames  += 2;
                     (*drop_diff) = 1;
                 }
@@ -265,7 +264,7 @@ int main(int argc, char *argv[])
     uint32_t state = -1;
     int kf = 0;
     int closed_gop = 0;
-	int drop_diff = 0;
+	uint8_t drop_diff = 0;
     float fps = 0;
     Timecode last_key;
 
