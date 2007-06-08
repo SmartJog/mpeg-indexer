@@ -46,7 +46,7 @@ typedef struct {
 typedef struct {
     uint32_t find_gop;
     uint32_t find_pic;
-    Timecode last_key_frame;
+    Timecode gop_time;
     int fps;
     uint8_t drop_mode;
 } TimeContext;
@@ -215,10 +215,10 @@ static int find_timecode(Index *idx, AVPacket *pkt, int *frame_num, TimeContext 
     tc->find_pic = pic;
     if (gop == GOP_START_CODE) { // found GOP header => I-frame follows
         drop = !!(buf[j] & 0x80);
-        tc->last_key_frame.hours   = idx->timecode.hours   = (buf[j] >> 2) & 0x1f;
-        tc->last_key_frame.minutes = idx->timecode.minutes = (buf[j] & 0x03) << 4 | (buf[j+1] >> 4);
-        tc->last_key_frame.seconds = idx->timecode.seconds = (buf[j+1] & 0x07) << 3 | (buf[j+2] >> 5);
-        tc->last_key_frame.frames  = idx->timecode.frames  = ((buf[j+2] & 0x1f) << 1 | (buf[j+3] >> 7));
+        tc->gop_time.hours   = idx->timecode.hours   = (buf[j] >> 2) & 0x1f;
+        tc->gop_time.minutes = idx->timecode.minutes = (buf[j] & 0x03) << 4 | (buf[j+1] >> 4);
+        tc->gop_time.seconds = idx->timecode.seconds = (buf[j+1] & 0x07) << 3 | (buf[j+2] >> 5);
+        tc->gop_time.frames  = idx->timecode.frames  = ((buf[j+2] & 0x1f) << 1 | (buf[j+3] >> 7));
         tc->drop_mode = 0;
         printf("\nGOP timecode :\t%02d:%02d:%02d:%02d\tdrop : %d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames, drop);
         tc->find_gop = -1;
@@ -232,8 +232,8 @@ static int find_timecode(Index *idx, AVPacket *pkt, int *frame_num, TimeContext 
         printf("frame type : %d\n", frame_type);
         // calculation of timecode for current frame
 
-        idx->timecode = tc->last_key_frame;
-        idx->timecode.frames = tc->last_key_frame.frames + temp_ref;
+        idx->timecode = tc->gop_time;
+        idx->timecode.frames = tc->gop_time.frames + temp_ref;
 
         while (idx->timecode.frames >= tc->fps) {
             idx->timecode.seconds++;
@@ -253,7 +253,7 @@ static int find_timecode(Index *idx, AVPacket *pkt, int *frame_num, TimeContext 
         while (idx->timecode.hours >= 24)
             idx->timecode.hours = 0; // what to do ?
 
-        if (drop && idx->timecode.minutes % 10 && idx->timecode.minutes != tc->last_key_frame.minutes) {
+        if (drop && idx->timecode.minutes % 10 && idx->timecode.minutes != tc->gop_time.minutes) {
             printf ("dropping numbers 0 and 1 from timecode count\n");
             idx->timecode.frames += 2;
             tc->drop_mode = 1;
@@ -372,7 +372,6 @@ int main(int argc, char *argv[])
                 assert(stcontext.index[stcontext.frame_num-1].pic_type > 0 &&
                         stcontext.index[stcontext.frame_num-1].pic_type < 4);
                 //printf("find gop : %x, find pic : %x\n", find_gop, find_pic);
-                //find_timecode(&find_gop, &find_pic, &stcontext.index[stcontext.frame_num - 1], &pkt, &stcontext.frame_num, &last_key, fps, &drop_diff);
             }
             if (stcontext.need_gop != -1) {
                 closed_gop = !!(pkt.data[stcontext.need_gop] & 0x40);
