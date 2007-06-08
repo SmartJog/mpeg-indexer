@@ -192,39 +192,37 @@ static int get_frame_rate(AVStream *st, AVPacket *pkt)
 static int find_timecode(uint32_t *find_gop,uint32_t *find_pic, Index *ind, AVPacket *pkt, int *frame_num, Timecode *last_key_frame, float fps, uint8_t *drop_diff)
 {
     uint8_t *buf = pkt->data;
-    uint32_t c = *find_gop;
-    uint32_t d = *find_pic;
+    uint32_t gop = *find_gop;
+    uint32_t pic = *find_pic;
     int i, j=0, drop = 0;
-    for(i = 0; i < pkt->size && d != PICTURE_START_CODE; i++) {
-        if (c != GOP_START_CODE){
-            c = (c<<8) + buf[i]; 
+    for(i = 0; i < pkt->size && pic != PICTURE_START_CODE; i++) {
+        if (gop != GOP_START_CODE){
+            gop = (gop<<8) + buf[i]; 
             j = i+1;
         }
-        d = (d<<8) + buf[i];
-    }  
-    (*find_gop) = c;
-    (*find_pic) = d;
-    if (c == GOP_START_CODE) { // found GOP header => I-frame follows 
+        pic = (pic<<8) + buf[i];
+    }
+    //printf ("pic : %x\n", pic);
+    (*find_gop) = gop;
+    (*find_pic) = pic;
+    if (gop == GOP_START_CODE) { // found GOP header => I-frame follows 
         drop = !!(buf[j] & 0x80);
         last_key_frame->hours   = ind->timecode.hours   = (buf[i] >> 2) & 0x1f;
         last_key_frame->minutes = ind->timecode.minutes = (buf[j] & 0x03) << 4 | (buf[j+1] >> 4);
         last_key_frame->seconds = ind->timecode.seconds = (buf[j+1] & 0x07) << 3 | (buf[j+2] >> 5);
         last_key_frame->frames  = ind->timecode.frames  = ((buf[j+2] & 0x1f) << 1 | (buf[j+3] >> 7));
         (*drop_diff) = 0;
-//        printf("\nGOP timecode :\t%02d:%02d:%02d:%02d\tdrop : %d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames, drop);
+        printf("\nGOP timecode :\t%02d:%02d:%02d:%02d\tdrop : %d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames, drop);
         (*find_gop) = -1;
     }
-    if (d == PICTURE_START_CODE) { // found picture start code
+    if (pic == PICTURE_START_CODE) { // found picture start code
         uint32_t temp_ref = 0;
         uint32_t frame_type;
         int round_fps = (int)fps;
-        temp_ref = (temp_ref<<8) + buf[i];
-        temp_ref = (temp_ref<<8) + buf[i+1];
-        temp_ref = (temp_ref>>6);
+        temp_ref = ((buf[i] << 8) + buf[i+1]) >> 6;
         printf("temp_ref %d\n", temp_ref);
-        frame_type = buf[i+1];
-        frame_type = (frame_type >> 3) & 0x7;
-
+        frame_type = (buf[i+1] >> 3) & 0x7;
+        printf("frame type : %d\n", frame_type);
         // calculation of timecode for current frame
         ind->timecode.frames  = ((last_key_frame->frames  + temp_ref) % round_fps);
         if (*drop_diff)
@@ -232,21 +230,34 @@ static int find_timecode(uint32_t *find_gop,uint32_t *find_pic, Index *ind, AVPa
         ind->timecode.seconds = ((int)(last_key_frame->seconds + ((last_key_frame->frames + temp_ref) / fps))) % 60;
         ind->timecode.minutes = ((int)(last_key_frame->minutes + ((last_key_frame->frames + temp_ref) / (fps * 60)))) % 60;
         ind->timecode.hours   = ((int)(last_key_frame->hours   + ((last_key_frame->frames + temp_ref) / (fps * 3600)))) % 24;
-        if ((last_key_frame->seconds + ((last_key_frame->frames + temp_ref) / fps)) >= 60){
-            if ((ind->timecode.minutes + 1) >= 60){
-                ind->timecode.hours   = (ind->timecode.hours + 1) % 24;
-            }
-            ind->timecode.minutes = (ind->timecode.minutes + 1) % 60;
 
+        if (ind->timecode.frames >= fps) {
+            ind->timecode.seconds++;
+            ind->timecode.frames = 0;
         }
+
+        if (ind->timecode.seconds >= 60) {
+            ind->timecode.minutes++;
+            ind->timecode.seconds = 0;
+        }
+
+        if (ind->timecode.minutes >= 60) {
+            ind->timecode.hours++;
+            ind->timecode.minutes = 0;
+        }
+
+        if (ind->timecode.hours >= 24)
+            ind->timecode.hours = 0; // what to do ?
+
+
         if ((drop) && (ind->timecode.minutes %10) && !(ind->timecode.seconds) && ((ind->timecode.frames == 0) || (ind->timecode.frames == 1))){
             printf ("dropping numbers 0 and 1 from timecode count\n");
             ind->timecode.frames  += 2;
             (*drop_diff) = 1;
         }
         (*find_pic) = -1;
-//        printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames);
         (*frame_num)++;
+        printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames);
     }
     return 0;
 }
@@ -354,10 +365,12 @@ int main(int argc, char *argv[])
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
             if (stcontext.need_pic_type != -1) {
                 stcontext.index[stcontext.frame_num-1].pic_type = (pkt.data[stcontext.need_pic_type] >> 3) & 7;
-                printf("pic type %d\n", stcontext.index[stcontext.frame_num-1].pic_type);
+                //printf("pic type %d\n", stcontext.index[stcontext.frame_num-1].pic_type);
                 stcontext.need_pic_type = -1;
                 assert(stcontext.index[stcontext.frame_num-1].pic_type > 0 &&
                         stcontext.index[stcontext.frame_num-1].pic_type < 4);
+                //printf("find gop : %x, find pic : %x\n", find_gop, find_pic);
+                //find_timecode(&find_gop, &find_pic, &stcontext.index[stcontext.frame_num - 1], &pkt, &stcontext.frame_num, &last_key, fps, &drop_diff);
             }
             if (stcontext.need_gop != -1) {
                 closed_gop = !!(pkt.data[stcontext.need_gop] & 0x40);
@@ -375,7 +388,7 @@ int main(int argc, char *argv[])
                     ind->seq = 1;
                     ind_set(&stcontext, ind, &pkt, st, i);
                 } else if (state == GOP_START_CODE) {
-                ind->gop = 1;
+                    ind->gop = 1;
                     if (!ind->seq)
                         ind_set(&stcontext, ind, &pkt, st, i);
                     if (i + 5 > pkt.size) {
@@ -402,6 +415,7 @@ int main(int argc, char *argv[])
                 if (flag == 0){
                     flag = 1;
                     find_timecode(&find_gop, &find_pic, ind, &pkt, &stcontext.frame_num, &last_key, fps, &drop_diff);
+//                    printf("find_pic %x\n", find_pic);
                     if (!(stcontext.frame_num % 1000))
                         stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
                     stcontext.index[stcontext.frame_num].seq = 0;
