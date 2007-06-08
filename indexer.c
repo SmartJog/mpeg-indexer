@@ -226,7 +226,7 @@ static int find_timecode(uint32_t *find_gop,uint32_t *find_pic, Index *ind, AVPa
         // calculation of timecode for current frame
 
         ind->timecode = *last_key_frame;
-        ind->timecode.frames  = last_key_frame->frames  + temp_ref;
+        ind->timecode.frames = last_key_frame->frames + temp_ref;
 
         if (ind->timecode.frames >= fps) {
             ind->timecode.seconds++;
@@ -248,7 +248,7 @@ static int find_timecode(uint32_t *find_gop,uint32_t *find_pic, Index *ind, AVPa
 
         if (drop && ind->timecode.minutes % 10 && ind->timecode.minutes != last_key_frame->minutes) {
             printf ("dropping numbers 0 and 1 from timecode count\n");
-            ind->timecode.frames  += 2;
+            ind->timecode.frames += 2;
             (*drop_diff) = 1;
         }
         (*find_pic) = -1;
