@@ -227,17 +227,17 @@ static int find_timecode(uint32_t *find_gop,uint32_t *find_pic, Index *ind, AVPa
         ind->timecode = *last_key_frame;
         ind->timecode.frames = last_key_frame->frames + temp_ref;
 
-        if (ind->timecode.frames >= fps) {
+        while (ind->timecode.frames >= fps) {
             ind->timecode.seconds++;
             ind->timecode.frames -= fps;
         }
 
-        if (ind->timecode.seconds >= 60) {
+        while (ind->timecode.seconds >= 60) {
             ind->timecode.minutes++;
             ind->timecode.seconds -= 60;
         }
 
-        if (ind->timecode.minutes >= 60) {
+        while (ind->timecode.minutes >= 60) {
             ind->timecode.hours++;
             ind->timecode.minutes -= 60;
         }
