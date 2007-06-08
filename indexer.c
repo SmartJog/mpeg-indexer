@@ -44,13 +44,21 @@ typedef struct {
 } Index;
 
 typedef struct {
+    uint32_t find_gop;
+    uint32_t find_pic;
+    Timecode last_key_frame;
+    int fps;
+    uint8_t drop_mode;
+} TimeContext;
+
+typedef struct {
     AVFormatContext *fc;
     AVStream *video;
     ByteIOContext pb;
     ByteIOContext opb;
     int need_gop;
     int need_pic_type;
-    uint8_t *ind;
+    uint8_t *idx;
     unsigned int ind_size;
     uint64_t mpeg_size;
     MpegDemuxContext mpg_demux_ctx;
@@ -60,9 +68,9 @@ typedef struct {
     int64_t current_dts[5];
 } StreamContext;
 
-static int ind_sort_by_pts(const void *ind1, const void *ind2)
+static int idx_sort_by_pts(const void *idx1, const void *idx2)
 {
-    return ((Index *)ind1)->pts - ((Index *)ind2)->pts;
+    return ((Index *)idx1)->pts - ((Index *)idx2)->pts;
 }
 
 extern AVInputFormat mpegps_demuxer;
@@ -98,19 +106,19 @@ static int write_index(StreamContext *stcontext)
     url_open_dyn_buf(&indexpb);
     int i;
 
-    qsort(stcontext->index, stcontext->frame_num, sizeof(Index), ind_sort_by_pts);
+    qsort(stcontext->index, stcontext->frame_num, sizeof(Index), idx_sort_by_pts);
     put_le64(&indexpb, 0x534A2D494E444558LL);       // Magic number : SJ-INDEX in hex
     put_byte(&indexpb, 0x00000000);                 // Version
     for (i = 0; i < stcontext->frame_num; i++) {
-        Index *ind = &stcontext->index[i];
-        //printf("\ntimecode :\t%02d:%02d:%02d:%02d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames);
-        put_le64(&indexpb, ind->pts);               // PTS
-        put_le64(&indexpb, ind->dts);               // DTS
-        put_le64(&indexpb, ind->pes_offset);        // PES offset
-        put_byte(&indexpb, ind->timecode.frames);   // Frame number in timecode
-        put_byte(&indexpb, ind->timecode.seconds);  // Seconds number in timecode
-        put_byte(&indexpb, ind->timecode.minutes);  // Minutes number in timecode
-        put_byte(&indexpb, ind->timecode.hours);    // Hours number in timecode
+        Index *idx = &stcontext->index[i];
+        //printf("\ntimecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
+        put_le64(&indexpb, idx->pts);               // PTS
+        put_le64(&indexpb, idx->dts);               // DTS
+        put_le64(&indexpb, idx->pes_offset);        // PES offset
+        put_byte(&indexpb, idx->timecode.frames);   // Frame number in timecode
+        put_byte(&indexpb, idx->timecode.seconds);  // Seconds number in timecode
+        put_byte(&indexpb, idx->timecode.minutes);  // Minutes number in timecode
+        put_byte(&indexpb, idx->timecode.hours);    // Hours number in timecode
         put_flush_packet(&indexpb);
     }
     index_size = url_close_dyn_buf(&indexpb, &index_buf);
@@ -129,18 +137,18 @@ static int write_trailer(StreamContext *s)
     return 0;
 }
 
-static av_always_inline int ind_set(StreamContext *stc, Index *ind, AVPacket *pkt, AVStream *st, int i)
+static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pkt, AVStream *st, int i)
 {
-    Index *oldind = stc->frame_num ? &stc->index[stc->frame_num - 1] : NULL;
+    Index *oldidx = stc->frame_num ? &stc->index[stc->frame_num - 1] : NULL;
     offset_t pkt_start = url_ftell(&stc->fc->pb) - pkt->size;
-    ind->pes_offset = pes_find_packet_start(&stc->fc->pb, pkt_start, st->id);
-    ind->dts = stc->current_dts[st->index];
-    ind->pts = stc->current_pts[st->index];
-    ind->pes_offset = pkt->pos;
-    if (oldind && ind->dts <= oldind->dts) {
-        ind->dts = oldind->dts + 3600;
-        ind->pts = oldind->pts + 3600;
-        printf("adjusting dts %lld -> %lld\n", stc->current_dts[st->index], ind->dts);
+    idx->pes_offset = pes_find_packet_start(&stc->fc->pb, pkt_start, st->id);
+    idx->dts = stc->current_dts[st->index];
+    idx->pts = stc->current_pts[st->index];
+    idx->pes_offset = pkt->pos;
+    if (oldidx && idx->dts <= oldidx->dts) {
+        idx->dts = oldidx->dts + 3600;
+        idx->pts = oldidx->pts + 3600;
+        printf("adjusting dts %lld -> %lld\n", stc->current_dts[st->index], idx->dts);
     }
     return 0;
 }
@@ -151,11 +159,11 @@ static int get_frame_rate(AVStream *st, AVPacket *pkt)
     if (st){
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
             uint8_t *buf = pkt->data;
-            float fps = -1;
+            int fps = -1;
             //printf("buf 7 : %x\n", buf[7]);
             switch (buf[7] & 0xF){
                 case 0x1:
-                    fps = 24000/1001;
+                    fps = 24;
                     break;
                 case 0x2:
                     fps = 24;
@@ -173,7 +181,7 @@ static int get_frame_rate(AVStream *st, AVPacket *pkt)
                     fps = 50;
                     break;
                 case 0x7:
-                    fps = 60000/1001;
+                    fps = 60;
                     break;
                 case 0x8:
                     fps = 60;
@@ -189,11 +197,11 @@ static int get_frame_rate(AVStream *st, AVPacket *pkt)
     return -1;
 }
 
-static int find_timecode(uint32_t *find_gop,uint32_t *find_pic, Index *ind, AVPacket *pkt, int *frame_num, Timecode *last_key_frame, float fps, uint8_t *drop_diff)
+static int find_timecode(Index *idx, AVPacket *pkt, int *frame_num, TimeContext *tc)
 {
     uint8_t *buf = pkt->data;
-    uint32_t gop = *find_gop;
-    uint32_t pic = *find_pic;
+    uint32_t gop = tc->find_gop;
+    uint32_t pic = tc->find_pic;
     int i, j = 0, drop = 0;
     for(i = 0; i < pkt->size && pic != PICTURE_START_CODE; i++) {
         if (gop != GOP_START_CODE){
@@ -203,17 +211,17 @@ static int find_timecode(uint32_t *find_gop,uint32_t *find_pic, Index *ind, AVPa
         pic = (pic<<8) + buf[i];
     }
     //printf ("pic : %x\n", pic);
-    (*find_gop) = gop;
-    (*find_pic) = pic;
+    tc->find_gop = gop;
+    tc->find_pic = pic;
     if (gop == GOP_START_CODE) { // found GOP header => I-frame follows
         drop = !!(buf[j] & 0x80);
-        last_key_frame->hours   = ind->timecode.hours   = (buf[j] >> 2) & 0x1f;
-        last_key_frame->minutes = ind->timecode.minutes = (buf[j] & 0x03) << 4 | (buf[j+1] >> 4);
-        last_key_frame->seconds = ind->timecode.seconds = (buf[j+1] & 0x07) << 3 | (buf[j+2] >> 5);
-        last_key_frame->frames  = ind->timecode.frames  = ((buf[j+2] & 0x1f) << 1 | (buf[j+3] >> 7));
-        (*drop_diff) = 0;
-        printf("\nGOP timecode :\t%02d:%02d:%02d:%02d\tdrop : %d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames, drop);
-        (*find_gop) = -1;
+        tc->last_key_frame.hours   = idx->timecode.hours   = (buf[j] >> 2) & 0x1f;
+        tc->last_key_frame.minutes = idx->timecode.minutes = (buf[j] & 0x03) << 4 | (buf[j+1] >> 4);
+        tc->last_key_frame.seconds = idx->timecode.seconds = (buf[j+1] & 0x07) << 3 | (buf[j+2] >> 5);
+        tc->last_key_frame.frames  = idx->timecode.frames  = ((buf[j+2] & 0x1f) << 1 | (buf[j+3] >> 7));
+        tc->drop_mode = 0;
+        printf("\nGOP timecode :\t%02d:%02d:%02d:%02d\tdrop : %d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames, drop);
+        tc->find_gop = -1;
     }
     if (pic == PICTURE_START_CODE) { // found picture start code
         uint32_t temp_ref = 0;
@@ -224,35 +232,35 @@ static int find_timecode(uint32_t *find_gop,uint32_t *find_pic, Index *ind, AVPa
         printf("frame type : %d\n", frame_type);
         // calculation of timecode for current frame
 
-        ind->timecode = *last_key_frame;
-        ind->timecode.frames = last_key_frame->frames + temp_ref;
+        idx->timecode = tc->last_key_frame;
+        idx->timecode.frames = tc->last_key_frame.frames + temp_ref;
 
-        while (ind->timecode.frames >= fps) {
-            ind->timecode.seconds++;
-            ind->timecode.frames -= fps;
+        while (idx->timecode.frames >= tc->fps) {
+            idx->timecode.seconds++;
+            idx->timecode.frames -= tc->fps;
         }
 
-        while (ind->timecode.seconds >= 60) {
-            ind->timecode.minutes++;
-            ind->timecode.seconds -= 60;
+        while (idx->timecode.seconds >= 60) {
+            idx->timecode.minutes++;
+            idx->timecode.seconds -= 60;
         }
 
-        while (ind->timecode.minutes >= 60) {
-            ind->timecode.hours++;
-            ind->timecode.minutes -= 60;
+        while (idx->timecode.minutes >= 60) {
+            idx->timecode.hours++;
+            idx->timecode.minutes -= 60;
         }
 
-        if (ind->timecode.hours >= 24)
-            ind->timecode.hours = 0; // what to do ?
+        while (idx->timecode.hours >= 24)
+            idx->timecode.hours = 0; // what to do ?
 
-        if (drop && ind->timecode.minutes % 10 && ind->timecode.minutes != last_key_frame->minutes) {
+        if (drop && idx->timecode.minutes % 10 && idx->timecode.minutes != tc->last_key_frame.minutes) {
             printf ("dropping numbers 0 and 1 from timecode count\n");
-            ind->timecode.frames += 2;
-            (*drop_diff) = 1;
-        }
-        (*find_pic) = -1;
+            idx->timecode.frames += 2;
+            tc->drop_mode = 1;
+        } 
+        tc->find_pic = -1;
         (*frame_num)++;
-        printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", ind->timecode.hours, ind->timecode.minutes, ind->timecode.seconds, ind->timecode.frames);
+        printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
     }
     return 0;
 }
@@ -263,20 +271,19 @@ int main(int argc, char *argv[])
     AVStream *st = NULL;
     AVPacket pkt;
     StreamContext stcontext;
+    TimeContext tc;
     uint8_t *buffer;
     int i, ret;
     (void)buffer;
     uint32_t state = -1;
     int closed_gop = 0;
-	uint8_t drop_diff = 0;
-    float fps = 0;
-    Timecode last_key;
     int count = 0; // debug purposes only
     // variables used in find_timecode needing to be memorized.
-    uint32_t find_pic = -1, find_gop = -1;
 
     memset(&stcontext, 0, sizeof(stcontext));
-    memset(&last_key, 0, sizeof (last_key));
+    memset(&tc, 0, sizeof(tc));
+    tc.find_gop = -1;
+    tc.find_pic = -1;
 
     if (argc < 3) {
         printf("indexing infile outfile\n");
@@ -373,19 +380,19 @@ int main(int argc, char *argv[])
                 stcontext.need_gop = -1;
             }
             for (i = 0; i < pkt.size; i++) {
-                Index *ind = &stcontext.index[stcontext.frame_num];
+                Index *idx = &stcontext.index[stcontext.frame_num];
                 i = ff_find_start_code(pkt.data + i, pkt.data + pkt.size, &state) - pkt.data - 1;
                 if (state == SEQ_START_CODE){
-                    if (!fps){
-                        fps = get_frame_rate(st, &pkt);
-                        printf("fps %f\n", fps);
+                    if (!tc.fps){
+                        tc.fps = get_frame_rate(st, &pkt);
+                        printf("fps %d\n", tc.fps);
                     }
-                    ind->seq = 1;
-                    ind_set(&stcontext, ind, &pkt, st, i);
+                    idx->seq = 1;
+                    idx_set(&stcontext, idx, &pkt, st, i);
                 } else if (state == GOP_START_CODE) {
-                    ind->gop = 1;
-                    if (!ind->seq)
-                        ind_set(&stcontext, ind, &pkt, st, i);
+                    idx->gop = 1;
+                    if (!idx->seq)
+                        idx_set(&stcontext, idx, &pkt, st, i);
                     if (i + 5 > pkt.size) {
                         stcontext.need_gop = 4 - pkt.size + i;
                         printf("could not get GOP type, need %d\n", stcontext.need_gop);
@@ -393,23 +400,23 @@ int main(int argc, char *argv[])
                         closed_gop = !!(pkt.data[i + 4] & 0x40);
                     }
                 } else if (state == PICTURE_START_CODE) {
-                    if (!ind->seq && !ind->gop)
-                        ind_set(&stcontext, ind, &pkt, st, i);
+                    if (!idx->seq && !idx->gop)
+                        idx_set(&stcontext, idx, &pkt, st, i);
                     if (i + 3 > pkt.size) {
                         stcontext.need_pic_type = 2 - pkt.size + i;
-                        ind->pic_type = 0;
+                        idx->pic_type = 0;
                         printf("could not get picture type, need %d\n", stcontext.need_pic_type);
                     } else {
-                        ind->pic_type = (pkt.data[i + 2] >> 3) & 7;
-                        assert(ind->pic_type > 0 && ind->pic_type < 4);
+                        idx->pic_type = (pkt.data[i + 2] >> 3) & 7;
+                        assert(idx->pic_type > 0 && idx->pic_type < 4);
                     }
-                    if (!ind->pts)
-                        ind->pts=ind->dts;
-                    ind->closed_gop = closed_gop;
+                    if (!idx->pts)
+                        idx->pts=idx->dts;
+                    idx->closed_gop = closed_gop;
                 }
                 if (flag == 0){
                     flag = 1;
-                    find_timecode(&find_gop, &find_pic, ind, &pkt, &stcontext.frame_num, &last_key, fps, &drop_diff);
+                    find_timecode(idx, &pkt, &stcontext.frame_num, &tc);
 //                    printf("find_pic %x\n", find_pic);
                     if (!(stcontext.frame_num % 1000))
                         stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
