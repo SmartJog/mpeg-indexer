@@ -218,7 +218,6 @@ static int find_timecode(uint32_t *find_gop,uint32_t *find_pic, Index *ind, AVPa
     if (pic == PICTURE_START_CODE) { // found picture start code
         uint32_t temp_ref = 0;
         uint32_t frame_type;
-        int round_fps = (int)fps;
         temp_ref = ((buf[i] << 8) + buf[i+1]) >> 6;
         printf("temp_ref %d\n", temp_ref);
         frame_type = (buf[i+1] >> 3) & 0x7;
