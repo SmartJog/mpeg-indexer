@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-Wall -O3 -fomit-frame-pointer
-LDFLAGS=-lavformat
+LDFLAGS=-lavformat -lavcodec -lavutil -lm
 DESTDIR = /
 all:		indexer indexparse
 
