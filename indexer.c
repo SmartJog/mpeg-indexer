@@ -44,8 +44,6 @@ typedef struct {
 } Index;
 
 typedef struct {
-    uint32_t find_gop;
-    uint32_t find_pic;
     Timecode gop_time;
     int fps;
     uint8_t drop_mode;
@@ -197,71 +195,56 @@ static int get_frame_rate(AVStream *st, AVPacket *pkt)
     return -1;
 }
 
-static int find_timecode(Index *idx, AVPacket *pkt, int *frame_num, TimeContext *tc)
+static int parse_gop_timecode(Index *idx, AVPacket *pkt, TimeContext *tc, int i)
 {
     uint8_t *buf = pkt->data;
-    uint32_t gop = tc->find_gop;
-    uint32_t pic = tc->find_pic;
-    int i, j = 0, drop = 0;
-    for(i = 0; i < pkt->size && pic != PICTURE_START_CODE; i++) {
-        if (gop != GOP_START_CODE){
-            gop = (gop<<8) + buf[i];
-            j = i+1;
-        }
-        pic = (pic<<8) + buf[i];
-    }
     //printf ("pic : %x\n", pic);
-    tc->find_gop = gop;
-    tc->find_pic = pic;
-    if (gop == GOP_START_CODE) { // found GOP header => I-frame follows
-        drop = !!(buf[j] & 0x80);
-        tc->gop_time.hours   = idx->timecode.hours   = (buf[j] >> 2) & 0x1f;
-        tc->gop_time.minutes = idx->timecode.minutes = (buf[j] & 0x03) << 4 | (buf[j+1] >> 4);
-        tc->gop_time.seconds = idx->timecode.seconds = (buf[j+1] & 0x07) << 3 | (buf[j+2] >> 5);
-        tc->gop_time.frames  = idx->timecode.frames  = ((buf[j+2] & 0x1f) << 1 | (buf[j+3] >> 7));
-        tc->drop_mode = 0;
-        printf("\nGOP timecode :\t%02d:%02d:%02d:%02d\tdrop : %d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames, drop);
-        tc->find_gop = -1;
+    tc->drop_mode = !!(buf[i] & 0x80);
+    tc->gop_time.hours   = idx->timecode.hours   = (buf[i] >> 2) & 0x1f;
+    tc->gop_time.minutes = idx->timecode.minutes = (buf[i] & 0x03) << 4 | (buf[i+1] >> 4);
+    tc->gop_time.seconds = idx->timecode.seconds = (buf[i+1] & 0x07) << 3 | (buf[i+2] >> 5);
+    tc->gop_time.frames  = idx->timecode.frames  = ((buf[i+2] & 0x1f) << 1 | (buf[i+3] >> 7));
+    printf("\nGOP timecode :\t%02d:%02d:%02d:%02d\tdrop : %d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames, tc->drop_mode);
+    return 0;
+}
+
+static int find_pic_timecode(Index *idx, AVPacket *pkt, TimeContext *tc, int i)
+{
+    uint8_t *buf = pkt->data;
+    uint32_t temp_ref = 0;
+    uint32_t frame_type;
+    temp_ref = ((buf[i] << 8) + buf[i+1]) >> 6;
+    printf("temp_ref %d\n", temp_ref);
+    frame_type = (buf[i+1] >> 3) & 0x7;
+    printf("frame type : %d\n", frame_type);
+    // calculation of timecode for current frame
+
+    idx->timecode = tc->gop_time;
+    idx->timecode.frames = tc->gop_time.frames + temp_ref;
+
+    while (idx->timecode.frames >= tc->fps) {
+        idx->timecode.seconds++;
+        idx->timecode.frames -= tc->fps;
     }
-    if (pic == PICTURE_START_CODE) { // found picture start code
-        uint32_t temp_ref = 0;
-        uint32_t frame_type;
-        temp_ref = ((buf[i] << 8) + buf[i+1]) >> 6;
-        printf("temp_ref %d\n", temp_ref);
-        frame_type = (buf[i+1] >> 3) & 0x7;
-        printf("frame type : %d\n", frame_type);
-        // calculation of timecode for current frame
 
-        idx->timecode = tc->gop_time;
-        idx->timecode.frames = tc->gop_time.frames + temp_ref;
-
-        while (idx->timecode.frames >= tc->fps) {
-            idx->timecode.seconds++;
-            idx->timecode.frames -= tc->fps;
-        }
-
-        while (idx->timecode.seconds >= 60) {
-            idx->timecode.minutes++;
-            idx->timecode.seconds -= 60;
-        }
-
-        while (idx->timecode.minutes >= 60) {
-            idx->timecode.hours++;
-            idx->timecode.minutes -= 60;
-        }
-
-        while (idx->timecode.hours >= 24)
-            idx->timecode.hours = 0; // what to do ?
-
-        if (drop && idx->timecode.minutes % 10 && idx->timecode.minutes != tc->gop_time.minutes) {
-            printf ("dropping numbers 0 and 1 from timecode count\n");
-            idx->timecode.frames += 2;
-            tc->drop_mode = 1;
-        } 
-        tc->find_pic = -1;
-        (*frame_num)++;
-        printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
+    while (idx->timecode.seconds >= 60) {
+        idx->timecode.minutes++;
+        idx->timecode.seconds -= 60;
     }
+
+    while (idx->timecode.minutes >= 60) {
+        idx->timecode.hours++;
+        idx->timecode.minutes -= 60;
+    }
+
+    while (idx->timecode.hours >= 24)
+        idx->timecode.hours = 0; // what to do ?
+
+    if (tc->drop_mode && idx->timecode.minutes % 10 && idx->timecode.minutes != tc->gop_time.minutes) {
+        printf ("dropping numbers 0 and 1 from timecode count\n");
+        idx->timecode.frames += 2;
+    }
+    printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
     return 0;
 }
 
@@ -277,13 +260,10 @@ int main(int argc, char *argv[])
     (void)buffer;
     uint32_t state = -1;
     int closed_gop = 0;
-    int count = 0; // debug purposes only
     // variables used in find_timecode needing to be memorized.
 
     memset(&stcontext, 0, sizeof(stcontext));
     memset(&tc, 0, sizeof(tc));
-    tc.find_gop = -1;
-    tc.find_pic = -1;
 
     if (argc < 3) {
         printf("indexing infile outfile\n");
@@ -349,10 +329,8 @@ int main(int argc, char *argv[])
     printf("creating index\n");
     int flag = 0;
     while (1) {
-        count++;
         flag = 0;
         ret = av_read_packet(ic, &pkt);
-        //printf("--------------------PACKET n°%d----------------\n", count);
         if (ret < 0)
             break;
 #ifdef DEBUG
@@ -367,14 +345,14 @@ int main(int argc, char *argv[])
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
             if (stcontext.need_pic_type != -1) {
                 stcontext.index[stcontext.frame_num-1].pic_type = (pkt.data[stcontext.need_pic_type] >> 3) & 7;
-                //printf("pic type %d\n", stcontext.index[stcontext.frame_num-1].pic_type);
+                find_pic_timecode(&stcontext.index[stcontext.frame_num-1], &pkt, &tc, stcontext.need_pic_type-1 );
                 stcontext.need_pic_type = -1;
                 assert(stcontext.index[stcontext.frame_num-1].pic_type > 0 &&
                         stcontext.index[stcontext.frame_num-1].pic_type < 4);
-                //printf("find gop : %x, find pic : %x\n", find_gop, find_pic);
             }
             if (stcontext.need_gop != -1) {
                 closed_gop = !!(pkt.data[stcontext.need_gop] & 0x40);
+                parse_gop_timecode(&stcontext.index[stcontext.frame_num-1], &pkt, &tc, stcontext.need_gop+1); 
                 printf("gop %d\n", closed_gop);
                 stcontext.need_gop = -1;
             }
@@ -397,6 +375,8 @@ int main(int argc, char *argv[])
                         printf("could not get GOP type, need %d\n", stcontext.need_gop);
                     } else {
                         closed_gop = !!(pkt.data[i + 4] & 0x40);
+                        printf("pkt[i] : %x",pkt.data[i]);
+                        parse_gop_timecode(idx, &pkt, &tc, i+1); 
                     }
                 } else if (state == PICTURE_START_CODE) {
                     if (!idx->seq && !idx->gop)
@@ -408,19 +388,17 @@ int main(int argc, char *argv[])
                     } else {
                         idx->pic_type = (pkt.data[i + 2] >> 3) & 7;
                         assert(idx->pic_type > 0 && idx->pic_type < 4);
+                        find_pic_timecode(idx, &pkt, &tc, i+1);
                     }
                     if (!idx->pts)
                         idx->pts=idx->dts;
                     idx->closed_gop = closed_gop;
-                }
-                if (flag == 0){
-                    flag = 1;
-                    find_timecode(idx, &pkt, &stcontext.frame_num, &tc);
-//                    printf("find_pic %x\n", find_pic);
+                    stcontext.frame_num++;
                     if (!(stcontext.frame_num % 1000))
                         stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
                     stcontext.index[stcontext.frame_num].seq = 0;
                     stcontext.index[stcontext.frame_num].gop = 0;
+
                 }
             }
         }
