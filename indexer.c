@@ -20,7 +20,7 @@
                    (((uint8_t*)(x))[2] << 8) | \
                     ((uint8_t*)(x))[3])
 
-const int FPS[8] = {24, 24, 25, 30, 30, 50, 60, 60};
+static const int fps_list[8] = {24, 24, 25, 30, 30, 50, 60, 60};
 typedef struct MpegDemuxContext {
     int32_t header_state;
     unsigned char psm_es_type[256];
@@ -161,11 +161,16 @@ static int get_frame_rate(AVStream *st, AVPacket *pkt)
             int fps = -1;
             //printf("buf 7 : %x\n", buf[7]);
             int tmp = buf[7] & 0xF;
-            fps = FPS[tmp-1];
+            if (tmp < 1 || tmp > 8){
+                printf("Unknown frame rate\n");
+                return 0;
+            }else{
+                fps = fps_list[tmp-1];
+            }
             return fps;
         }
     }
-    return -1;
+    return 0;
 }
 
 static int parse_gop_timecode(Index *idx, AVPacket *pkt, TimeContext *tc, int i)
@@ -336,7 +341,7 @@ int main(int argc, char *argv[])
                     if (!tc.fps){
                         tc.fps = get_frame_rate(st, &pkt);
                         printf("fps %d\n", tc.fps);
-                        if (tc.fps == -1){
+                        if (!tc.fps){
                             printf("Frame rate could not be found\n");
                             return -1;
                         }
