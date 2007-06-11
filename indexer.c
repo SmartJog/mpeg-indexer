@@ -8,17 +8,7 @@
 #define GOP_START_CODE            0x000001b8
 #define PICTURE_START_CODE        0x00000100
 
-#define HEADER_TYPE_PRELUDE 0x00
-#define HEADER_TYPE_PRIVATE 0x01
-#define HEADER_TYPE_INDEX   0x02
-#define HEADER_TYPE_END     0x04
-
 //#define DEBUG
-
-#define BE_32(x)  ((((uint8_t*)(x))[0] << 24) | \
-                   (((uint8_t*)(x))[1] << 16) | \
-                   (((uint8_t*)(x))[2] << 8) | \
-                    ((uint8_t*)(x))[3])
 
 static const int fps_list[8] = {24, 24, 25, 30, 30, 50, 60, 60};
 typedef struct MpegDemuxContext {
