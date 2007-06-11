@@ -129,12 +129,7 @@ static int write_index(StreamContext *stcontext)
     //url_fclose(&stcontext->opb);
     return 0;
 }
-static int write_trailer(StreamContext *s)
-{
-    if (write_index(s) < 0)
-        return -1;
-    return 0;
-}
+
 
 static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pkt, AVStream *st, int i)
 {
@@ -159,7 +154,6 @@ static int get_frame_rate(AVStream *st, AVPacket *pkt)
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
             uint8_t *buf = pkt->data;
             int fps = -1;
-            //printf("buf 7 : %x\n", buf[7]);
             int tmp = buf[7] & 0xF;
             if (tmp < 1 || tmp > 8){
                 printf("Unknown frame rate\n");
@@ -176,7 +170,7 @@ static int get_frame_rate(AVStream *st, AVPacket *pkt)
 static int parse_gop_timecode(Index *idx, AVPacket *pkt, TimeContext *tc, int i)
 {
     uint8_t *buf = pkt->data;
-    //printf ("pic : %x\n", pic);
+
     tc->drop_mode = !!(buf[i] & 0x80);
     tc->gop_time.hours   = idx->timecode.hours   = (buf[i] >> 2) & 0x1f;
     tc->gop_time.minutes = idx->timecode.minutes = (buf[i] & 0x03) << 4 | (buf[i+1] >> 4);
@@ -238,7 +232,6 @@ int main(int argc, char *argv[])
     (void)buffer;
     uint32_t state = -1;
     int closed_gop = 0;
-    // variables used in find_timecode needing to be memorized.
 
     memset(&stcontext, 0, sizeof(stcontext));
     memset(&tc, 0, sizeof(tc));
@@ -305,9 +298,8 @@ int main(int argc, char *argv[])
 
     stcontext.index = av_malloc(1000 * sizeof(Index));
     printf("creating index\n");
-    int flag = 0;
+
     while (1) {
-        flag = 0;
         ret = av_read_packet(ic, &pkt);
         if (ret < 0)
             break;
@@ -357,7 +349,7 @@ int main(int argc, char *argv[])
                         printf("could not get GOP type, need %d\n", stcontext.need_gop);
                     } else {
                         closed_gop = !!(pkt.data[i + 4] & 0x40);
-                        printf("pkt[i] : %x",pkt.data[i]);
+//                        printf("pkt[i] : %x",pkt.data[i]);
                         parse_gop_timecode(idx, &pkt, &tc, i+1); 
                     }
                 } else if (state == PICTURE_START_CODE) {
@@ -386,7 +378,7 @@ int main(int argc, char *argv[])
         }
         av_free_packet(&pkt);
     }
-    write_trailer(&stcontext);
+    write_index(&stcontext);
     av_close_input_file(ic);
     url_fclose(&stcontext.opb);
     printf("frame num %d\n", stcontext.frame_num);
