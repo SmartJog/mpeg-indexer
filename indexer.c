@@ -20,6 +20,7 @@
                    (((uint8_t*)(x))[2] << 8) | \
                     ((uint8_t*)(x))[3])
 
+const int FPS[8] = {24, 24, 25, 30, 30, 50, 60, 60};
 typedef struct MpegDemuxContext {
     int32_t header_state;
     unsigned char psm_es_type[256];
@@ -159,36 +160,8 @@ static int get_frame_rate(AVStream *st, AVPacket *pkt)
             uint8_t *buf = pkt->data;
             int fps = -1;
             //printf("buf 7 : %x\n", buf[7]);
-            switch (buf[7] & 0xF){
-                case 0x1:
-                    fps = 24;
-                    break;
-                case 0x2:
-                    fps = 24;
-                    break;
-                case 0x3:
-                    fps = 25;
-                    break;
-                case 0x4:
-                    fps = 30;
-                    break;
-                case 0x5:
-                    fps = 30;
-                    break;
-                case 0x6:
-                    fps = 50;
-                    break;
-                case 0x7:
-                    fps = 60;
-                    break;
-                case 0x8:
-                    fps = 60;
-                    break;
-             default :
-                    printf("error fps could not be retrieved\n");
-                    fps = -1;
-                    break;
-            }
+            int tmp = buf[7] & 0xF;
+            fps = FPS[tmp-1];
             return fps;
         }
     }
@@ -363,6 +336,10 @@ int main(int argc, char *argv[])
                     if (!tc.fps){
                         tc.fps = get_frame_rate(st, &pkt);
                         printf("fps %d\n", tc.fps);
+                        if (tc.fps == -1){
+                            printf("Frame rate could not be found\n");
+                            return -1;
+                        }
                     }
                     idx->seq = 1;
                     idx_set(&stcontext, idx, &pkt, st, i);
