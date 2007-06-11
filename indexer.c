@@ -208,7 +208,7 @@ static int parse_gop_timecode(Index *idx, AVPacket *pkt, TimeContext *tc, int i)
     return 0;
 }
 
-static int find_pic_timecode(Index *idx, AVPacket *pkt, TimeContext *tc, int i)
+static int parse_pic_timecode(Index *idx, AVPacket *pkt, TimeContext *tc, int i)
 {
     uint8_t *buf = pkt->data;
     uint32_t temp_ref = 0;
@@ -345,7 +345,7 @@ int main(int argc, char *argv[])
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
             if (stcontext.need_pic_type != -1) {
                 stcontext.index[stcontext.frame_num-1].pic_type = (pkt.data[stcontext.need_pic_type] >> 3) & 7;
-                find_pic_timecode(&stcontext.index[stcontext.frame_num-1], &pkt, &tc, stcontext.need_pic_type-1 );
+                parse_pic_timecode(&stcontext.index[stcontext.frame_num-1], &pkt, &tc, stcontext.need_pic_type-1 );
                 stcontext.need_pic_type = -1;
                 assert(stcontext.index[stcontext.frame_num-1].pic_type > 0 &&
                         stcontext.index[stcontext.frame_num-1].pic_type < 4);
@@ -388,7 +388,7 @@ int main(int argc, char *argv[])
                     } else {
                         idx->pic_type = (pkt.data[i + 2] >> 3) & 7;
                         assert(idx->pic_type > 0 && idx->pic_type < 4);
-                        find_pic_timecode(idx, &pkt, &tc, i+1);
+                        parse_pic_timecode(idx, &pkt, &tc, i+1);
                     }
                     if (!idx->pts)
                         idx->pts=idx->dts;
