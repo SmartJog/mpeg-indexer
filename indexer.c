@@ -23,6 +23,7 @@ typedef struct {
 } Timecode;
 
 typedef struct {
+    uint32_t temp_ref;
     uint8_t pic_type;
     int seq:1;
     int gop:1;
@@ -172,16 +173,15 @@ static int parse_gop_timecode(Index *idx, AVPacket *pkt, TimeContext *tc, int i)
 static int parse_pic_timecode(Index *idx, AVPacket *pkt, TimeContext *tc, int i)
 {
     uint8_t *buf = pkt->data;
-    uint32_t temp_ref = 0;
     uint32_t frame_type;
-    temp_ref = ((buf[i] << 8) + buf[i+1]) >> 6;
-    printf("temp_ref %d\n", temp_ref);
+    idx->temp_ref += ((buf[i] << 8) + buf[i+1]) >> 6;
+    printf("temp_ref %d\n", idx->temp_ref);
     frame_type = (buf[i+1] >> 3) & 0x7;
     printf("frame type : %d\n", frame_type);
     // calculation of timecode for current frame
 
     idx->timecode = tc->gop_time;
-    idx->timecode.frames = tc->gop_time.frames + temp_ref;
+    idx->timecode.frames = tc->gop_time.frames + idx->temp_ref;
 
     while (idx->timecode.frames >= tc->fps) {
         idx->timecode.seconds++;
@@ -303,13 +303,16 @@ int main(int argc, char *argv[])
         }
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
             if (stcontext.need_pic_type != -1) {
+                printf("debug need pic\n");
                 stcontext.index[stcontext.frame_num-1].pic_type = (pkt.data[stcontext.need_pic_type] >> 3) & 7;
+                // adjusting the timecode if part of it was in the previous packet
                 parse_pic_timecode(&stcontext.index[stcontext.frame_num-1], &pkt, &tc, stcontext.need_pic_type-1 );
                 stcontext.need_pic_type = -1;
                 assert(stcontext.index[stcontext.frame_num-1].pic_type > 0 &&
                         stcontext.index[stcontext.frame_num-1].pic_type < 4);
             }
             if (stcontext.need_gop != -1) {
+                printf("debug need gop\n");
                 closed_gop = !!(pkt.data[stcontext.need_gop] & 0x40);
                 parse_gop_timecode(&stcontext.index[stcontext.frame_num-1], &pkt, &tc, stcontext.need_gop+1); 
                 printf("gop %d\n", closed_gop);
@@ -317,6 +320,7 @@ int main(int argc, char *argv[])
             }
             for (i = 0; i < pkt.size; i++) {
                 Index *idx = &stcontext.index[stcontext.frame_num];
+                idx->temp_ref = 0;
                 i = ff_find_start_code(pkt.data + i, pkt.data + pkt.size, &state) - pkt.data - 1;
                 if (state == SEQ_START_CODE){
                     if (!tc.fps){
@@ -348,6 +352,7 @@ int main(int argc, char *argv[])
                         stcontext.need_pic_type = 2 - pkt.size + i;
                         idx->pic_type = 0;
                         printf("could not get picture type, need %d\n", stcontext.need_pic_type);
+                        parse_pic_timecode(idx, &pkt, &tc, i+1);
                     } else {
                         idx->pic_type = (pkt.data[i + 2] >> 3) & 7;
                         assert(idx->pic_type > 0 && idx->pic_type < 4);
