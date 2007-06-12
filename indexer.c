@@ -36,6 +36,7 @@ typedef struct {
 
 typedef struct {
     Timecode gop_time;
+    uint8_t *buf;
     int fps;
     uint8_t drop_mode;
 } TimeContext;
@@ -157,27 +158,29 @@ static int get_frame_rate(AVStream *st, AVPacket *pkt)
     return 0;
 }
 
-static int parse_gop_timecode(Index *idx, AVPacket *pkt, TimeContext *tc, int i)
+static int parse_gop_timecode(Index *idx, TimeContext *tc)
 {
-    uint8_t *buf = pkt->data;
+    //uint8_t *buf = pkt->data;
 
-    tc->drop_mode = !!(buf[i] & 0x80);
-    tc->gop_time.hours   = idx->timecode.hours   = (buf[i] >> 2) & 0x1f;
-    tc->gop_time.minutes = idx->timecode.minutes = (buf[i] & 0x03) << 4 | (buf[i+1] >> 4);
-    tc->gop_time.seconds = idx->timecode.seconds = (buf[i+1] & 0x07) << 3 | (buf[i+2] >> 5);
-    tc->gop_time.frames  = idx->timecode.frames  = ((buf[i+2] & 0x1f) << 1 | (buf[i+3] >> 7));
+    tc->drop_mode = !!(tc->buf[0] & 0x80);
+    tc->gop_time.hours   = idx->timecode.hours   = (tc->buf[0] >> 2) & 0x1f;
+    tc->gop_time.minutes = idx->timecode.minutes = (tc->buf[0] & 0x03) << 4 | (tc->buf[1] >> 4);
+    tc->gop_time.seconds = idx->timecode.seconds = (tc->buf[1] & 0x07) << 3 | (tc->buf[2] >> 5);
+    tc->gop_time.frames  = idx->timecode.frames  = ((tc->buf[2] & 0x1f) << 1 | (tc->buf[3] >> 7));
     printf("\nGOP timecode :\t%02d:%02d:%02d:%02d\tdrop : %d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames, tc->drop_mode);
     return 0;
 }
 
-static int parse_pic_timecode(Index *idx, AVPacket *pkt, TimeContext *tc, int i)
+static int parse_pic_timecode(Index *idx, TimeContext *tc)
 {
-    uint8_t *buf = pkt->data;
-    uint32_t frame_type;
-    idx->temp_ref += ((buf[i] << 8) + buf[i+1]) >> 6;
+    //uint8_t *buf = pkt->data;
+    // if idx->temp_ref is not empty then the first octet was in the previous packet and its value was stored in idx->tem_ref which means
+    // only the first two bits of the second octet are needed
+    if (idx->temp_ref)
+        idx->temp_ref += tc->buf[1] >> 6;
+    else
+        idx->temp_ref = ((tc->buf[0] << 8) + tc->buf[1]) >> 6;
     printf("temp_ref %d\n", idx->temp_ref);
-    frame_type = (buf[i+1] >> 3) & 0x7;
-    printf("frame type : %d\n", frame_type);
     // calculation of timecode for current frame
 
     idx->timecode = tc->gop_time;
@@ -287,8 +290,9 @@ int main(int argc, char *argv[])
 
     stcontext.index = av_malloc(1000 * sizeof(Index));
     printf("creating index\n");
-
+//    int count = 0;
     while (1) {
+//        printf("------------------------PACKET n°%d-------------------\n",count++);
         ret = av_read_packet(ic, &pkt);
         if (ret < 0)
             break;
@@ -303,10 +307,11 @@ int main(int argc, char *argv[])
         }
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
             if (stcontext.need_pic_type != -1) {
-                printf("debug need pic\n");
+                printf("debug need pic idx->tempref : %d\n",stcontext.index[stcontext.frame_num-1].temp_ref );
                 stcontext.index[stcontext.frame_num-1].pic_type = (pkt.data[stcontext.need_pic_type] >> 3) & 7;
-                // adjusting the timecode if part of it was in the previous packet
-                parse_pic_timecode(&stcontext.index[stcontext.frame_num-1], &pkt, &tc, stcontext.need_pic_type-1 );
+
+                tc.buf = pkt.data + stcontext.need_pic_type-1;
+                parse_pic_timecode(&stcontext.index[stcontext.frame_num-1], &tc);
                 stcontext.need_pic_type = -1;
                 assert(stcontext.index[stcontext.frame_num-1].pic_type > 0 &&
                         stcontext.index[stcontext.frame_num-1].pic_type < 4);
@@ -314,7 +319,8 @@ int main(int argc, char *argv[])
             if (stcontext.need_gop != -1) {
                 printf("debug need gop\n");
                 closed_gop = !!(pkt.data[stcontext.need_gop] & 0x40);
-                parse_gop_timecode(&stcontext.index[stcontext.frame_num-1], &pkt, &tc, stcontext.need_gop+1); 
+                tc.buf = pkt.data + stcontext.need_gop + 1;
+                parse_gop_timecode(&stcontext.index[stcontext.frame_num-1], &tc); 
                 printf("gop %d\n", closed_gop);
                 stcontext.need_gop = -1;
             }
@@ -343,7 +349,8 @@ int main(int argc, char *argv[])
                     } else {
                         closed_gop = !!(pkt.data[i + 4] & 0x40);
 //                        printf("pkt[i] : %x",pkt.data[i]);
-                        parse_gop_timecode(idx, &pkt, &tc, i+1); 
+                        tc.buf = pkt.data + i + 1;
+                        parse_gop_timecode(idx, &tc); 
                     }
                 } else if (state == PICTURE_START_CODE) {
                     if (!idx->seq && !idx->gop)
@@ -351,12 +358,16 @@ int main(int argc, char *argv[])
                     if (i + 3 > pkt.size) {
                         stcontext.need_pic_type = 2 - pkt.size + i;
                         idx->pic_type = 0;
+                        // if the temporal reference's first octet is in this packet, it needs to be stored
+                        if (i + 1 <= pkt.size){
+                            idx->temp_ref = pkt.data[i+1] << 2;
+                        }
                         printf("could not get picture type, need %d\n", stcontext.need_pic_type);
-                        parse_pic_timecode(idx, &pkt, &tc, i+1);
                     } else {
                         idx->pic_type = (pkt.data[i + 2] >> 3) & 7;
                         assert(idx->pic_type > 0 && idx->pic_type < 4);
-                        parse_pic_timecode(idx, &pkt, &tc, i+1);
+                        tc.buf = pkt.data + i + 1;
+                        parse_pic_timecode(idx, &tc);
                     }
                     if (!idx->pts)
                         idx->pts=idx->dts;
