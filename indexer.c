@@ -124,8 +124,8 @@ static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pk
     idx->dts = stc->current_dts[st->index];
     idx->pts = stc->current_pts[st->index];
     if (oldidx && idx->dts <= oldidx->dts) {
-        idx->dts = oldidx->dts + 3600;
-        idx->pts = oldidx->pts + 3600;
+        idx->dts = oldidx->dts + av_rescale(1, 90000, (int) (st->codec->time_base.den/st->codec->time_base.num));
+        idx->pts = oldidx->pts + av_rescale(1, 90000, (int) (st->codec->time_base.den/st->codec->time_base.num));
         printf("adjusting dts %lld -> %lld\n", stc->current_dts[st->index], idx->dts);
     }
     return 0;
@@ -262,7 +262,7 @@ int main(int argc, char *argv[])
     stcontext.index = av_malloc(1000 * sizeof(Index));
     printf("creating index\n");
     int k = 0;
-    int count = 0;
+//    int count = 0;
     while (1) {
         //printf("------------------------PACKET n°%d-------------------\n",count++);
         ret = av_read_packet(ic, &pkt);
@@ -274,8 +274,9 @@ int main(int argc, char *argv[])
 #endif
         st = ic->streams[pkt.stream_index];
         if (!tc.fps){
-            tc.fps =(int) (st->r_frame_rate.num/st->r_frame_rate.den);
-            if (st->r_frame_rate.den == 1001)
+            printf("st->codec->time_base.num: %d, st->codec->time_base.den: %d\n", st->codec->time_base.num, st->codec->time_base.den);
+            tc.fps =(int) (st->codec->time_base.den/st->codec->time_base.num);
+            if (st->codec->time_base.den == 1001)
                 tc.fps++;
             printf("fps : %d\n",tc.fps);
         }
@@ -291,6 +292,7 @@ int main(int argc, char *argv[])
                 stcontext.need_pic = -1;
                 assert(stcontext.index[stcontext.frame_num-1].pic_type > 0 &&
                        stcontext.index[stcontext.frame_num-1].pic_type < 4);
+//                idx_set(&stcontext,&stcontext.index[stcontext.frame_num-1], &pkt, st, i);
             }
             if (stcontext.need_gop != -1) {
                 printf("DEBUG GOP\n");
