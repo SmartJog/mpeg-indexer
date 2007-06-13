@@ -261,7 +261,6 @@ int main(int argc, char *argv[])
 
     stcontext.index = av_malloc(1000 * sizeof(Index));
     printf("creating index\n");
-    int j;
     int k = 0;
     int count = 0;
     while (1) {
@@ -274,6 +273,12 @@ int main(int argc, char *argv[])
             break;
 #endif
         st = ic->streams[pkt.stream_index];
+        if (!tc.fps){
+            tc.fps =(int) (st->r_frame_rate.num/st->r_frame_rate.den);
+            if (st->r_frame_rate.den == 1001)
+                tc.fps++;
+            printf("fps : %d\n",tc.fps);
+        }
         if (pkt.dts != AV_NOPTS_VALUE) {
             stcontext.current_dts[st->index] = pkt.dts;
             stcontext.current_pts[st->index] = pkt.pts;
