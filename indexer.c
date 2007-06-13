@@ -24,8 +24,6 @@ typedef struct {
 
 typedef struct {
     uint8_t pic_type;
-    int seq:1;
-    int gop:1;
     int8_t closed_gop;
     int64_t pts;
     int64_t dts;
@@ -352,13 +350,11 @@ int main(int argc, char *argv[])
                                 return -1;
                             }
                         }
-                        idx->seq = 1;
                     } else if (state == GOP_START_CODE) {
                         if (i + 5> pkt.size){
                             stcontext.need_gop = 5-k > 0 ? 5-k : -1 ;
                             printf("GOP header incomplete, need %d byte\n", stcontext.need_gop);
                         }
-                        idx->gop = 1;
                         if (stcontext.need_gop == -1)
                             closed_gop = !!(pkt.data[i + 4] & 0x40);
 
@@ -382,8 +378,6 @@ int main(int argc, char *argv[])
                         stcontext.frame_num++;
                         if (!(stcontext.frame_num % 1000))
                             stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
-                        stcontext.index[stcontext.frame_num].seq = 0;
-                        stcontext.index[stcontext.frame_num].gop = 0;
                     }
                 }
             }
