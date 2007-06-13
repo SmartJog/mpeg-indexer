@@ -24,7 +24,6 @@ typedef struct {
 
 typedef struct {
     uint8_t pic_type;
-    int8_t closed_gop;
     int64_t pts;
     int64_t dts;
     offset_t pes_offset;
@@ -214,7 +213,6 @@ int main(int argc, char *argv[])
     int i, ret;
     (void)buffer;
     uint32_t state = -1;
-    int closed_gop = 0;
 
     memset(&stcontext, 0, sizeof(stcontext));
     memset(&tc, 0, sizeof(tc));
@@ -313,10 +311,8 @@ int main(int argc, char *argv[])
             }
             if (stcontext.need_gop != -1) {
                 printf("DEBUG GOP\n");
-                closed_gop = !!(pkt.data[stcontext.need_gop] & 0x40);
                 memcpy(data_buf + k, pkt.data, stcontext.need_gop);
                 parse_gop_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf + 1);
-                printf("gop %d\n", closed_gop);
                 stcontext.need_gop = -1;
             }
             if (stcontext.need_seq != -1) {
@@ -355,9 +351,6 @@ int main(int argc, char *argv[])
                             stcontext.need_gop = 5-k > 0 ? 5-k : -1 ;
                             printf("GOP header incomplete, need %d byte\n", stcontext.need_gop);
                         }
-                        if (stcontext.need_gop == -1)
-                            closed_gop = !!(pkt.data[i + 4] & 0x40);
-
                         parse_gop_timecode(idx, &tc, data_buf + 1);
                     } else if (state == PICTURE_START_CODE) {
                         if (i + 3> pkt.size){
@@ -374,7 +367,6 @@ int main(int argc, char *argv[])
                         }
                         if (!idx->pts)
                             idx->pts=idx->dts;
-                        idx->closed_gop = closed_gop;
                         stcontext.frame_num++;
                         if (!(stcontext.frame_num % 1000))
                             stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
