@@ -242,6 +242,10 @@ int main(int argc, char *argv[])
         printf("no video streams in input file\n");
         return 1;
     }
+
+    tc.fps = (float)stcontext.video->codec->time_base.den
+        / stcontext.video->codec->time_base.num + 0.5;
+
     stcontext.need_pic = 0;
     stcontext.need_gop = 0;
 
@@ -271,13 +275,6 @@ int main(int argc, char *argv[])
             break;
 #endif
         st = ic->streams[pkt.stream_index];
-        if (!tc.fps){
-            printf("st->codec->time_base.num: %d, st->codec->time_base.den: %d\n", st->codec->time_base.num, st->codec->time_base.den);
-            tc.fps =(int) (st->codec->time_base.den/st->codec->time_base.num);
-            if (st->codec->time_base.den == 1001)
-                tc.fps++;
-            printf("fps : %d\n",tc.fps);
-        }
         if (pkt.dts != AV_NOPTS_VALUE) {
             stcontext.current_dts[st->index] = pkt.dts;
             stcontext.current_pts[st->index] = pkt.pts;
