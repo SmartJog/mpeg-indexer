@@ -246,10 +246,6 @@ int main(int argc, char *argv[])
     tc.fps = (float)stcontext.video->codec->time_base.den
         / stcontext.video->codec->time_base.num + 0.5;
 
-    stcontext.need_pic = 0;
-    stcontext.need_gop = 0;
-
-    stcontext.frame_num = 0;
     stcontext.fc = ic;
 #ifdef DEBUG
     stcontext.mpeg_size = 400 * BUFFER_SIZE;
