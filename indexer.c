@@ -353,15 +353,12 @@ int main(int argc, char *argv[])
                             }
                         }
                         idx->seq = 1;
-                        idx_set(&stcontext, idx, &pkt, st, i);
                     } else if (state == GOP_START_CODE) {
                         if (i + 5> pkt.size){
                             stcontext.need_gop = 5-k > 0 ? 5-k : -1 ;
                             printf("GOP header incomplete, need %d byte\n", stcontext.need_gop);
                         }
                         idx->gop = 1;
-                        if (!idx->seq)
-                            idx_set(&stcontext, idx, &pkt, st, i);
                         if (stcontext.need_gop == -1)
                             closed_gop = !!(pkt.data[i + 4] & 0x40);
 
@@ -371,8 +368,7 @@ int main(int argc, char *argv[])
                             stcontext.need_pic = 3-k > 0 ? 3-k : -1 ;
                             printf("Picture header incomplete, need %d byte\n", stcontext.need_pic);
                         }
-                        if (!idx->seq && !idx->gop)
-                            idx_set(&stcontext, idx, &pkt, st, i);
+                        idx_set(&stcontext, idx, &pkt, st, i);
                         if (stcontext.need_pic == -1) {
                             idx->pic_type = (pkt.data[i + 2] >> 3) & 7;
                             printf("pic_type %d\n", idx->pic_type);
