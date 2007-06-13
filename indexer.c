@@ -242,8 +242,8 @@ int main(int argc, char *argv[])
         printf("no video streams in input file\n");
         return 1;
     }
-    stcontext.need_pic = -1;
-    stcontext.need_gop = -1;
+    stcontext.need_pic = 0;
+    stcontext.need_gop = 0;
 
     stcontext.frame_num = 0;
     stcontext.fc = ic;
@@ -261,8 +261,6 @@ int main(int argc, char *argv[])
 
     stcontext.index = av_malloc(1000 * sizeof(Index));
     printf("creating index\n");
-    int k = 0;
-//    int count = 0;
     while (1) {
         //printf("------------------------PACKET n°%d-------------------\n",count++);
         ret = av_read_packet(ic, &pkt);
@@ -285,55 +283,46 @@ int main(int argc, char *argv[])
             stcontext.current_pts[st->index] = pkt.pts;
         }
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
-            if (stcontext.need_pic != -1) {
+            if (stcontext.need_pic) {
                 printf("DEBUG PIC\n");
-                memcpy(data_buf + k, pkt.data, stcontext.need_pic);
-                parse_pic_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf + 1);
-                stcontext.need_pic = -1;
+                memcpy(data_buf + 2 - stcontext.need_pic, pkt.data, stcontext.need_pic);
+                parse_pic_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf);
+                stcontext.need_pic = 0;
                 assert(stcontext.index[stcontext.frame_num-1].pic_type > 0 &&
                        stcontext.index[stcontext.frame_num-1].pic_type < 4);
 //                idx_set(&stcontext,&stcontext.index[stcontext.frame_num-1], &pkt, st, i);
             }
-            if (stcontext.need_gop != -1) {
+            if (stcontext.need_gop) {
                 printf("DEBUG GOP\n");
-                memcpy(data_buf + k, pkt.data, stcontext.need_gop);
-                parse_gop_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf + 1);
-                stcontext.need_gop = -1;
+                memcpy(data_buf + 4 - stcontext.need_gop, pkt.data, stcontext.need_gop);
+                parse_gop_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf);
+                stcontext.need_gop = 0;
             }
             for (i = 0; i < pkt.size; i++) {
                 Index *idx = &stcontext.index[stcontext.frame_num];
                 i = ff_find_start_code(pkt.data + i, pkt.data + pkt.size, &state) - pkt.data - 1;
-                if (state == PICTURE_START_CODE || state == GOP_START_CODE){
-                    for (k = 0; i + k + 1<= pkt.size && k < 9; k++){
-                        data_buf[k] = pkt.data[i + k];
-                        //printf("data_buf %d : %02x\n",i+k,data_buf[k]);
-                    }
-                    //                    memcpy(data_buf, pkt.data + i, pkt.size);
-                    if (state == GOP_START_CODE) {
-                        if (i + 5> pkt.size){
-                            stcontext.need_gop = 5-k > 0 ? 5-k : -1 ;
-                            printf("GOP header incomplete, need %d byte\n", stcontext.need_gop);
-                        }
-                        parse_gop_timecode(idx, &tc, data_buf + 1);
-                    } else if (state == PICTURE_START_CODE) {
-                        if (i + 3> pkt.size){
-                            stcontext.need_pic = 3-k > 0 ? 3-k : -1 ;
-                            printf("Picture header incomplete, need %d byte\n", stcontext.need_pic);
-                        }
-                        idx_set(&stcontext, idx, &pkt, st, i);
-                        if (stcontext.need_pic == -1) {
-                            idx->pic_type = (pkt.data[i + 2] >> 3) & 7;
-                            printf("pic_type %d\n", idx->pic_type);
-                            assert(idx->pic_type > 0 && idx->pic_type < 4);
+                if (state == GOP_START_CODE) {
+                    int bytes = FFMIN(pkt.size - i - 1, 4);
+                    memcpy(data_buf, pkt.data + i + 1, bytes);
+                    stcontext.need_gop = 4 - bytes;
 
-                            parse_pic_timecode(idx, &tc, data_buf + 1);
-                        }
-                        if (!idx->pts)
-                            idx->pts=idx->dts;
-                        stcontext.frame_num++;
-                        if (!(stcontext.frame_num % 1000))
-                            stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
-                    }
+                    if (!stcontext.need_gop)
+                        parse_gop_timecode(idx, &tc, data_buf);
+                } else if (state == PICTURE_START_CODE) {
+                    int bytes = FFMIN(pkt.size - i - 1, 2);
+                    memcpy(data_buf, pkt.data + i + 1, bytes);
+                    stcontext.need_pic = 2 - bytes;
+
+                    idx_set(&stcontext, idx, &pkt, st, i);
+
+                    if (!stcontext.need_pic)
+                        parse_pic_timecode(idx, &tc, data_buf);
+
+                    if (!idx->pts)
+                        idx->pts=idx->dts;
+                    stcontext.frame_num++;
+                    if (!(stcontext.frame_num % 1000))
+                        stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
                 }
             }
         }
