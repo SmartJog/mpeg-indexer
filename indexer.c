@@ -42,7 +42,6 @@ typedef struct {
     ByteIOContext opb;
     int need_gop;
     int need_pic;
-    int need_seq;
     uint8_t *idx;
     unsigned int ind_size;
     uint64_t mpeg_size;
@@ -245,7 +244,6 @@ int main(int argc, char *argv[])
     }
     stcontext.need_pic = -1;
     stcontext.need_gop = -1;
-    stcontext.need_seq = -1;
 
     stcontext.frame_num = 0;
     stcontext.fc = ic;
@@ -294,14 +292,6 @@ int main(int argc, char *argv[])
                 memcpy(data_buf + k, pkt.data, stcontext.need_gop);
                 parse_gop_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf + 1);
                 stcontext.need_gop = -1;
-            }
-            if (stcontext.need_seq != -1) {
-                memcpy(data_buf + k, pkt.data, stcontext.need_seq);
-                printf("fps %d\n", tc.fps);
-                if (!tc.fps){
-                    printf("Frame rate could not be found\n");
-                    return -1;
-                }
             }
             for (i = 0; i < pkt.size; i++) {
                 Index *idx = &stcontext.index[stcontext.frame_num];
