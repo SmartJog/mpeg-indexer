@@ -100,7 +100,7 @@ static int write_index(StreamContext *stcontext)
     put_byte(&indexpb, 0x00000000);                 // Version
     for (i = 0; i < stcontext->frame_num; i++) {
         Index *idx = &stcontext->index[i];
-       // printf("\ntimecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
+        // printf("\ntimecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
         put_le64(&indexpb, idx->pts);               // PTS
         put_le64(&indexpb, idx->dts);               // DTS
         put_le64(&indexpb, idx->pes_offset);        // PES offset
@@ -311,7 +311,7 @@ int main(int argc, char *argv[])
                 parse_pic_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf + 1);
                 stcontext.need_pic = -1;
                 assert(stcontext.index[stcontext.frame_num-1].pic_type > 0 &&
-                        stcontext.index[stcontext.frame_num-1].pic_type < 4);
+                       stcontext.index[stcontext.frame_num-1].pic_type < 4);
             }
             if (stcontext.need_gop != -1) {
                 printf("DEBUG GOP\n");
@@ -338,7 +338,7 @@ int main(int argc, char *argv[])
                         data_buf[k] = pkt.data[i + k];
                         //printf("data_buf %d : %02x\n",i+k,data_buf[k]);
                     }
-//                    memcpy(data_buf, pkt.data + i, pkt.size);
+                    //                    memcpy(data_buf, pkt.data + i, pkt.size);
                     if (!tc.fps && state == SEQ_START_CODE){
                         if (i + 8> pkt.size){
                             stcontext.need_seq = 8-k > 0 ? 8-k : -1 ;
@@ -365,7 +365,7 @@ int main(int argc, char *argv[])
                         if (stcontext.need_gop == -1)
                             closed_gop = !!(pkt.data[i + 4] & 0x40);
 
-                            parse_gop_timecode(idx, &tc, data_buf + 1);
+                        parse_gop_timecode(idx, &tc, data_buf + 1);
                     } else if (state == PICTURE_START_CODE) {
                         if (i + 3> pkt.size){
                             stcontext.need_pic = 3-k > 0 ? 3-k : -1 ;
