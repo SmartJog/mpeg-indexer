@@ -128,7 +128,6 @@ static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pk
     idx->pes_offset = pes_find_packet_start(&stc->fc->pb, pkt_start, st->id);
     idx->dts = stc->current_dts[st->index];
     idx->pts = stc->current_pts[st->index];
-    idx->pes_offset = pkt->pos;
     if (oldidx && idx->dts <= oldidx->dts) {
         idx->dts = oldidx->dts + 3600;
         idx->pts = oldidx->pts + 3600;
