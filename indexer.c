@@ -308,7 +308,6 @@ int main(int argc, char *argv[])
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
             if (stcontext.need_pic != -1) {
                 printf("DEBUG PIC\n");
-                //stcontext.index[stcontext.frame_num-1].pic_type = (pkt.data[stcontext.need_pic] >> 3) & 7;
                 for (j = 0; j < stcontext.need_pic; j++){ 
                     data_buf[k] = pkt.data[j];
                     printf("data_buf %d : %02x\n", k, data_buf[k]);
@@ -322,7 +321,6 @@ int main(int argc, char *argv[])
             if (stcontext.need_gop != -1) {
                 printf("DEBUG GOP\n");
                 closed_gop = !!(pkt.data[stcontext.need_gop] & 0x40);
-                //tc.buf = pkt.data + stcontext.need_gop + 1;   
                 for (j = 0; j < stcontext.need_gop; j++){ 
                     data_buf[k] = pkt.data[j];
                     printf("data_buf %d : %02x\n", k, data_buf[k]);
@@ -343,27 +341,26 @@ int main(int argc, char *argv[])
                         data_buf[k] = pkt.data[i + k];
                         //printf("data_buf %d : %02x\n",i+k,data_buf[k]);
                     }
-                    if (i + k + 1> pkt.size){
-                        if (state == PICTURE_START_CODE)
-                            stcontext.need_pic = 3-k > 0 ? 3-k : -1 ;
-                        if (state == GOP_START_CODE)
-                            stcontext.need_gop = 5-k > 0 ? 5-k : -1 ;
-                        if (state == SEQ_START_CODE)
-                            stcontext.need_seq = 8-k > 0 ? 8-k : -1 ;
-                        printf("PIC : %d, GOP : %d, SEQ : %d\n",stcontext.need_pic, stcontext.need_gop, stcontext.need_seq);
-                    }
                     if (!tc.fps && state == SEQ_START_CODE){
-                            if (stcontext.need_seq == -1){
-                                tc.fps = get_frame_rate(st, &pkt);
-                                printf("fps %d\n", tc.fps);
-                                if (!tc.fps){
-                                    printf("Frame rate could not be found\n");
-                                    return -1;
-                                }
+                        if (i + 8> pkt.size){
+                            stcontext.need_seq = 8-k > 0 ? 8-k : -1 ;
+                            printf("Seq header incomplete, need %d byte\n", stcontext.need_seq);
+                        }
+                        if (stcontext.need_seq == -1){
+                            tc.fps = get_frame_rate(st, &pkt);
+                            printf("fps %d\n", tc.fps);
+                            if (!tc.fps){
+                                printf("Frame rate could not be found\n");
+                                return -1;
                             }
+                        }
                         idx->seq = 1;
                         idx_set(&stcontext, idx, &pkt, st, i);
                     } else if (state == GOP_START_CODE) {
+                        if (i + 5> pkt.size){
+                            stcontext.need_gop = 5-k > 0 ? 5-k : -1 ;
+                            printf("GOP header incomplete, need %d byte\n", stcontext.need_gop);
+                        }
                         idx->gop = 1;
                         if (!idx->seq)
                             idx_set(&stcontext, idx, &pkt, st, i);
@@ -372,6 +369,10 @@ int main(int argc, char *argv[])
 
                             parse_gop_timecode(idx, &tc, data_buf + 1);
                     } else if (state == PICTURE_START_CODE && tc.fps) {
+                        if (i + 3> pkt.size){
+                            stcontext.need_pic = 3-k > 0 ? 3-k : -1 ;
+                            printf("Picture header incomplete, need %d byte\n", stcontext.need_pic);
+                        }
                         if (!idx->seq && !idx->gop)
                             idx_set(&stcontext, idx, &pkt, st, i);
                         if (stcontext.need_pic == -1) {
