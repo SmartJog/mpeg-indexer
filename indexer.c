@@ -318,7 +318,7 @@ int main(int argc, char *argv[])
                 printf("DEBUG GOP\n");
                 closed_gop = !!(pkt.data[stcontext.need_gop] & 0x40);
                 memcpy(data_buf + k, pkt.data, stcontext.need_gop);
-                parse_gop_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf + 1); 
+                parse_gop_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf + 1);
                 printf("gop %d\n", closed_gop);
                 stcontext.need_gop = -1;
             }
@@ -367,7 +367,7 @@ int main(int argc, char *argv[])
                             closed_gop = !!(pkt.data[i + 4] & 0x40);
 
                             parse_gop_timecode(idx, &tc, data_buf + 1);
-                    } else if (state == PICTURE_START_CODE && tc.fps) {
+                    } else if (state == PICTURE_START_CODE) {
                         if (i + 3> pkt.size){
                             stcontext.need_pic = 3-k > 0 ? 3-k : -1 ;
                             printf("Picture header incomplete, need %d byte\n", stcontext.need_pic);
