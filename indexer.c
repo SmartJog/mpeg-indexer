@@ -176,6 +176,7 @@ static int parse_pic_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
     if (tc->drop_mode && idx->timecode.minutes % 10 && idx->timecode.minutes != tc->gop_time.minutes) {
         printf ("dropping numbers 0 and 1 from timecode count\n");
         idx->timecode.frames += 2;
+        //FIXME readjust if frames > fps
     }
     printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
     return 0;
