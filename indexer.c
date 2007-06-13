@@ -3,7 +3,6 @@
 #include <assert.h>
 #include <ffmpeg/avformat.h>
 
-#define SEQ_START_CODE            0x000001b3
 #define GOP_START_CODE            0x000001b8
 #define PICTURE_START_CODE        0x00000100
 
@@ -133,25 +132,6 @@ static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pk
     return 0;
 }
 #define BUFFER_SIZE 262144
-
-static int get_frame_rate(AVStream *st, AVPacket *pkt)
-{
-    if (st){
-        if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
-            uint8_t *buf = pkt->data;
-            int fps = -1;
-            int tmp = buf[7] & 0xF;
-            if (tmp < 1 || tmp > 8){
-                printf("Unknown frame rate\n");
-                return 0;
-            }else{
-                fps = fps_list[tmp-1];
-            }
-            return fps;
-        }
-    }
-    return 0;
-}
 
 static int parse_gop_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
 {
@@ -317,7 +297,6 @@ int main(int argc, char *argv[])
             }
             if (stcontext.need_seq != -1) {
                 memcpy(data_buf + k, pkt.data, stcontext.need_seq);
-                tc.fps = get_frame_rate(st, &pkt);
                 printf("fps %d\n", tc.fps);
                 if (!tc.fps){
                     printf("Frame rate could not be found\n");
@@ -327,26 +306,13 @@ int main(int argc, char *argv[])
             for (i = 0; i < pkt.size; i++) {
                 Index *idx = &stcontext.index[stcontext.frame_num];
                 i = ff_find_start_code(pkt.data + i, pkt.data + pkt.size, &state) - pkt.data - 1;
-                if (state == PICTURE_START_CODE || state == GOP_START_CODE || state == SEQ_START_CODE){
+                if (state == PICTURE_START_CODE || state == GOP_START_CODE){
                     for (k = 0; i + k + 1<= pkt.size && k < 9; k++){
                         data_buf[k] = pkt.data[i + k];
                         //printf("data_buf %d : %02x\n",i+k,data_buf[k]);
                     }
                     //                    memcpy(data_buf, pkt.data + i, pkt.size);
-                    if (!tc.fps && state == SEQ_START_CODE){
-                        if (i + 8> pkt.size){
-                            stcontext.need_seq = 8-k > 0 ? 8-k : -1 ;
-                            printf("Seq header incomplete, need %d byte\n", stcontext.need_seq);
-                        }
-                        if (stcontext.need_seq == -1){
-                            tc.fps = get_frame_rate(st, &pkt);
-                            printf("fps %d\n", tc.fps);
-                            if (!tc.fps){
-                                printf("Frame rate could not be found\n");
-                                return -1;
-                            }
-                        }
-                    } else if (state == GOP_START_CODE) {
+                    if (state == GOP_START_CODE) {
                         if (i + 5> pkt.size){
                             stcontext.need_gop = 5-k > 0 ? 5-k : -1 ;
                             printf("GOP header incomplete, need %d byte\n", stcontext.need_gop);
