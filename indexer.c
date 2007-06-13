@@ -100,7 +100,7 @@ static int write_index(StreamContext *stcontext)
     put_byte(&indexpb, 0x00000000);                 // Version
     for (i = 0; i < stcontext->frame_num; i++) {
         Index *idx = &stcontext->index[i];
-        printf("\ntimecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
+       // printf("\ntimecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
         put_le64(&indexpb, idx->pts);               // PTS
         put_le64(&indexpb, idx->dts);               // DTS
         put_le64(&indexpb, idx->pes_offset);        // PES offset
@@ -308,11 +308,7 @@ int main(int argc, char *argv[])
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
             if (stcontext.need_pic != -1) {
                 printf("DEBUG PIC\n");
-                for (j = 0; j < stcontext.need_pic; j++){ 
-                    data_buf[k] = pkt.data[j];
-                    printf("data_buf %d : %02x\n", k, data_buf[k]);
-                    k++;
-                }
+                memcpy(data_buf + k, pkt.data, stcontext.need_pic);
                 parse_pic_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf + 1);
                 stcontext.need_pic = -1;
                 assert(stcontext.index[stcontext.frame_num-1].pic_type > 0 &&
@@ -321,11 +317,7 @@ int main(int argc, char *argv[])
             if (stcontext.need_gop != -1) {
                 printf("DEBUG GOP\n");
                 closed_gop = !!(pkt.data[stcontext.need_gop] & 0x40);
-                for (j = 0; j < stcontext.need_gop; j++){ 
-                    data_buf[k] = pkt.data[j];
-                    printf("data_buf %d : %02x\n", k, data_buf[k]);
-                    k++;
-                }
+                memcpy(data_buf + k, pkt.data, stcontext.need_gop);
                 parse_gop_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf + 1); 
                 printf("gop %d\n", closed_gop);
                 stcontext.need_gop = -1;
@@ -341,6 +333,7 @@ int main(int argc, char *argv[])
                         data_buf[k] = pkt.data[i + k];
                         //printf("data_buf %d : %02x\n",i+k,data_buf[k]);
                     }
+//                    memcpy(data_buf, pkt.data + i, pkt.size);
                     if (!tc.fps && state == SEQ_START_CODE){
                         if (i + 8> pkt.size){
                             stcontext.need_seq = 8-k > 0 ? 8-k : -1 ;
