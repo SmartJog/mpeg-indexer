@@ -32,6 +32,7 @@ typedef struct {
 typedef struct {
     Timecode gop_time;
     int fps;
+    int frame_duration;
     uint8_t drop_mode;
 } TimeContext;
 
@@ -117,16 +118,14 @@ static int write_index(StreamContext *stcontext)
 }
 
 
-static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pkt, AVStream *st, int fps)
+static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pkt, AVStream *st, int frame_duration)
 {
     Index *oldidx = stc->frame_num ? &stc->index[stc->frame_num - 1] : NULL;
-    offset_t pkt_start = url_ftell(&stc->fc->pb) - pkt->size;
-    idx->pes_offset = pes_find_packet_start(&stc->fc->pb, pkt_start, st->id);
     idx->dts = stc->current_dts[st->index];
     idx->pts = stc->current_pts[st->index];
     if (oldidx && idx->dts <= oldidx->dts) {
-        idx->dts = oldidx->dts + av_rescale(1, 90000, fps);
-        idx->pts = oldidx->pts + av_rescale(1, 90000, fps);
+        idx->dts = oldidx->dts + frame_duration;
+        idx->pts = oldidx->pts + frame_duration;
         printf("adjusting dts %lld -> %lld\n", stc->current_dts[st->index], idx->dts);
     }
     return 0;
@@ -194,6 +193,7 @@ int main(int argc, char *argv[])
     int i, ret;
     (void)buffer;
     uint32_t state = -1;
+    offset_t last_offset = -1;
 
     memset(&stcontext, 0, sizeof(stcontext));
     memset(&tc, 0, sizeof(tc));
@@ -247,7 +247,7 @@ int main(int argc, char *argv[])
 
     tc.fps = (float)stcontext.video->codec->time_base.den
         / stcontext.video->codec->time_base.num + 0.5;
-
+    tc.frame_duration = av_rescale(1, 90000, tc.fps);
     stcontext.fc = ic;
 #ifdef DEBUG
     stcontext.mpeg_size = 400 * BUFFER_SIZE;
@@ -286,7 +286,6 @@ int main(int argc, char *argv[])
                 stcontext.need_pic = 0;
                 assert(stcontext.index[stcontext.frame_num-1].pic_type > 0 &&
                        stcontext.index[stcontext.frame_num-1].pic_type < 4);
-//                idx_set(&stcontext,&stcontext.index[stcontext.frame_num-1], &pkt, st, i);
             }
             if (stcontext.need_gop) {
                 printf("DEBUG GOP\n");
@@ -305,11 +304,18 @@ int main(int argc, char *argv[])
                     if (!stcontext.need_gop)
                         parse_gop_timecode(idx, &tc, data_buf);
                 } else if (state == PICTURE_START_CODE) {
+                    if (i <= 2){
+                        printf("Picture start code begins in previous packet : %lld\n", last_offset);
+                        idx->pes_offset = last_offset;
+                    } else {
+                        offset_t off = url_ftell(&stcontext.fc->pb) - pkt.size;
+                        idx->pes_offset = pes_find_packet_start(&stcontext.fc->pb, off, st->id);
+                    }
+
                     int bytes = FFMIN(pkt.size - i - 1, 2);
                     memcpy(data_buf, pkt.data + i + 1, bytes);
                     stcontext.need_pic = 2 - bytes;
-
-                    idx_set(&stcontext, idx, &pkt, st, tc.fps);
+                    idx_set(&stcontext, idx, &pkt, st, tc.frame_duration);
 
                     if (!stcontext.need_pic)
                         parse_pic_timecode(idx, &tc, data_buf);
@@ -320,9 +326,10 @@ int main(int argc, char *argv[])
                     if (!(stcontext.frame_num % 1000))
                         stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
                 }
-                printf("state : %d\ti : %d\n", state, i);
-
-//                assert(i>2);
+//              records the offset of the packet in case the next picture start code begins in it and finishes in the next packet
+                offset_t pkt_start = url_ftell(&stcontext.fc->pb) - pkt.size;
+                last_offset = pes_find_packet_start(&stcontext.fc->pb, pkt_start, st->id);
+                printf("last offset : %lld\n",last_offset);
 
             }
         }
