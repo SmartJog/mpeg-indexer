@@ -331,7 +331,7 @@ int main(int argc, char *argv[])
 //              records the offset of the packet in case the next picture start code begins in it and finishes in the next packet
             offset_t pkt_start = url_ftell(&stcontext.fc->pb) - pkt.size;
             last_offset = pes_find_packet_start(&stcontext.fc->pb, pkt_start, st->id);
-            printf("last : %lld\n", last_offset);
+//            printf("last : %lld\n", last_offset);
         }
         av_free_packet(&pkt);
     }
