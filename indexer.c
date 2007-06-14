@@ -32,7 +32,6 @@ typedef struct {
 typedef struct {
     Timecode gop_time;
     int fps;
-    int frame_duration;
     uint8_t drop_mode;
 } TimeContext;
 
@@ -51,6 +50,7 @@ typedef struct {
     Index *index;
     int64_t current_pts[5];
     int64_t current_dts[5];
+    int frame_duration;
 } StreamContext;
 
 static int idx_sort_by_pts(const void *idx1, const void *idx2)
@@ -118,14 +118,14 @@ static int write_index(StreamContext *stcontext)
 }
 
 
-static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pkt, AVStream *st, int frame_duration)
+static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pkt, AVStream *st)
 {
     Index *oldidx = stc->frame_num ? &stc->index[stc->frame_num - 1] : NULL;
     idx->dts = stc->current_dts[st->index];
     idx->pts = stc->current_pts[st->index];
     if (oldidx && idx->dts <= oldidx->dts) {
-        idx->dts = oldidx->dts + frame_duration;
-        idx->pts = oldidx->pts + frame_duration;
+        idx->dts = oldidx->dts + stc->frame_duration;
+        idx->pts = oldidx->pts + stc->frame_duration;
         printf("adjusting dts %lld -> %lld\n", stc->current_dts[st->index], idx->dts);
     }
     return 0;
@@ -247,7 +247,7 @@ int main(int argc, char *argv[])
 
     tc.fps = (float)stcontext.video->codec->time_base.den
         / stcontext.video->codec->time_base.num + 0.5;
-    tc.frame_duration = av_rescale(1, 90000, tc.fps);
+    stcontext.frame_duration = av_rescale(1, 90000, tc.fps);
     stcontext.fc = ic;
 #ifdef DEBUG
     stcontext.mpeg_size = 400 * BUFFER_SIZE;
@@ -263,9 +263,9 @@ int main(int argc, char *argv[])
 
     stcontext.index = av_malloc(1000 * sizeof(Index));
     printf("creating index\n");
-    int count = 0;
+//    int count = 0;
     while (1) {
-        printf("------------------------PACKET n°%d-------------------\n",count++);
+//        printf("------------------------PACKET n°%d-------------------\n",count++);
         ret = av_read_packet(ic, &pkt);
         if (ret < 0)
             break;
@@ -304,18 +304,19 @@ int main(int argc, char *argv[])
                     if (!stcontext.need_gop)
                         parse_gop_timecode(idx, &tc, data_buf);
                 } else if (state == PICTURE_START_CODE) {
-                    if (i <= 2){
+                    if (i < 3){
                         printf("Picture start code begins in previous packet : %lld\n", last_offset);
                         idx->pes_offset = last_offset;
                     } else {
                         offset_t off = url_ftell(&stcontext.fc->pb) - pkt.size;
                         idx->pes_offset = pes_find_packet_start(&stcontext.fc->pb, off, st->id);
+                        printf("Current Offset : %lld\n",idx->pes_offset);
                     }
 
                     int bytes = FFMIN(pkt.size - i - 1, 2);
                     memcpy(data_buf, pkt.data + i + 1, bytes);
                     stcontext.need_pic = 2 - bytes;
-                    idx_set(&stcontext, idx, &pkt, st, tc.frame_duration);
+                    idx_set(&stcontext, idx, &pkt, st);
 
                     if (!stcontext.need_pic)
                         parse_pic_timecode(idx, &tc, data_buf);
@@ -326,13 +327,11 @@ int main(int argc, char *argv[])
                     if (!(stcontext.frame_num % 1000))
                         stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
                 }
-//              records the offset of the packet in case the next picture start code begins in it and finishes in the next packet
-                offset_t pkt_start = url_ftell(&stcontext.fc->pb) - pkt.size;
-                last_offset = pes_find_packet_start(&stcontext.fc->pb, pkt_start, st->id);
-                printf("last offset : %lld\n",last_offset);
-
             }
         }
+//              records the offset of the packet in case the next picture start code begins in it and finishes in the next packet
+        offset_t pkt_start = url_ftell(&stcontext.fc->pb) - pkt.size;
+        last_offset = pes_find_packet_start(&stcontext.fc->pb, pkt_start, st->id);
         av_free_packet(&pkt);
     }
     write_index(&stcontext);
