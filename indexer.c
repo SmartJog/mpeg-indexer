@@ -329,6 +329,7 @@ int main(int argc, char *argv[])
     write_index(&stcontext);
     av_close_input_file(ic);
     url_fclose(&stcontext.opb);
+    av_free(stcontext.index);
     printf("frame num %d\n", stcontext.frame_num);
     return 0;
 }
