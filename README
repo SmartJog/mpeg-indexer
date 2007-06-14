@@ -5,6 +5,7 @@ Index Data :
         PTS                                                 -> 64 bits 
         DTS                                                 -> 64 bits
         PES offset                                          -> 64 bits
+        Frame Type                                          -> 8 bits
         Frame number in timecode                            -> 8 bits
         Seconds number in timecode                          -> 8 bits
         Minutes number in timecode                          -> 8 bits
