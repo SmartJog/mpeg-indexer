@@ -39,6 +39,7 @@ int main(int argc, char **argv)
         printf("pts %lld\n", get_le64(pb));
         printf("dts %lld\n", get_le64(pb));
         printf("pes_offset %lld\n", get_le64(pb));
+        printf("frame type %d\n", get_byte(pb));
         printf("Timecode : %02d:%02d:%02d:%02d\n", get_byte(pb), get_byte(pb), get_byte(pb), get_byte(pb));
     }
     url_fclose(pb);

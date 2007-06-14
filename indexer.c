@@ -99,6 +99,7 @@ static int write_index(StreamContext *stcontext)
         put_le64(&indexpb, idx->pts);               // PTS
         put_le64(&indexpb, idx->dts);               // DTS
         put_le64(&indexpb, idx->pes_offset);        // PES offset
+        put_byte(&indexpb, idx->pic_type);          // Picture Type
         put_byte(&indexpb, idx->timecode.frames);   // Frame number in timecode
         put_byte(&indexpb, idx->timecode.seconds);  // Seconds number in timecode
         put_byte(&indexpb, idx->timecode.minutes);  // Minutes number in timecode
@@ -116,7 +117,7 @@ static int write_index(StreamContext *stcontext)
 }
 
 
-static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pkt, AVStream *st, int i)
+static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pkt, AVStream *st, int fps)
 {
     Index *oldidx = stc->frame_num ? &stc->index[stc->frame_num - 1] : NULL;
     offset_t pkt_start = url_ftell(&stc->fc->pb) - pkt->size;
@@ -124,8 +125,8 @@ static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pk
     idx->dts = stc->current_dts[st->index];
     idx->pts = stc->current_pts[st->index];
     if (oldidx && idx->dts <= oldidx->dts) {
-        idx->dts = oldidx->dts + av_rescale(1, 90000, (int) (st->codec->time_base.den/st->codec->time_base.num));
-        idx->pts = oldidx->pts + av_rescale(1, 90000, (int) (st->codec->time_base.den/st->codec->time_base.num));
+        idx->dts = oldidx->dts + av_rescale(1, 90000, fps);
+        idx->pts = oldidx->pts + av_rescale(1, 90000, fps);
         printf("adjusting dts %lld -> %lld\n", stc->current_dts[st->index], idx->dts);
     }
     return 0;
@@ -262,8 +263,9 @@ int main(int argc, char *argv[])
 
     stcontext.index = av_malloc(1000 * sizeof(Index));
     printf("creating index\n");
+    int count = 0;
     while (1) {
-        //printf("------------------------PACKET n°%d-------------------\n",count++);
+        printf("------------------------PACKET n°%d-------------------\n",count++);
         ret = av_read_packet(ic, &pkt);
         if (ret < 0)
             break;
@@ -307,7 +309,7 @@ int main(int argc, char *argv[])
                     memcpy(data_buf, pkt.data + i + 1, bytes);
                     stcontext.need_pic = 2 - bytes;
 
-                    idx_set(&stcontext, idx, &pkt, st, i);
+                    idx_set(&stcontext, idx, &pkt, st, tc.fps);
 
                     if (!stcontext.need_pic)
                         parse_pic_timecode(idx, &tc, data_buf);
@@ -318,6 +320,10 @@ int main(int argc, char *argv[])
                     if (!(stcontext.frame_num % 1000))
                         stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
                 }
+                printf("state : %d\ti : %d\n", state, i);
+
+//                assert(i>2);
+
             }
         }
         av_free_packet(&pkt);
