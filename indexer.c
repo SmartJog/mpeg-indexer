@@ -96,7 +96,7 @@ static int write_index(StreamContext *stcontext)
     put_byte(&indexpb, 0x00000000);                 // Version
     for (i = 0; i < stcontext->frame_num; i++) {
         Index *idx = &stcontext->index[i];
-        // printf("\ntimecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
+//      printf("\ntimecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
         put_le64(&indexpb, idx->pts);               // PTS
         put_le64(&indexpb, idx->dts);               // DTS
         put_le64(&indexpb, idx->pes_offset);        // PES offset
@@ -110,10 +110,10 @@ static int write_index(StreamContext *stcontext)
     index_size = url_close_dyn_buf(&indexpb, &index_buf);
     put_flush_packet(&indexpb);
     printf("index size %d\n", index_size);
-    //url_fopen(&indexpb, "index", URL_WRONLY);
+//  url_fopen(&indexpb, "index", URL_WRONLY);
     put_buffer(&stcontext->opb, index_buf, index_size);
     put_flush_packet(&stcontext->opb);
-    //url_fclose(&stcontext->opb);
+//  url_fclose(&stcontext->opb);
     return 0;
 }
 
@@ -126,7 +126,7 @@ static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pk
     if (oldidx && idx->dts <= oldidx->dts) {
         idx->dts = oldidx->dts + stc->frame_duration;
         idx->pts = oldidx->pts + stc->frame_duration;
-        printf("adjusting dts %lld -> %lld\n", stc->current_dts[st->index], idx->dts);
+//      printf("adjusting dts %lld -> %lld\n", stc->current_dts[st->index], idx->dts);
     }
     return 0;
 }
@@ -139,18 +139,18 @@ static int parse_gop_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
     tc->gop_time.minutes = idx->timecode.minutes = (buf[0] & 0x03) << 4 | (buf[1] >> 4);
     tc->gop_time.seconds = idx->timecode.seconds = (buf[1] & 0x07) << 3 | (buf[2] >> 5);
     tc->gop_time.frames  = idx->timecode.frames  = ((buf[2] & 0x1f) << 1 | (buf[3] >> 7));
-    printf("\nGOP timecode :\t%02d:%02d:%02d:%02d\tdrop : %d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames, tc->drop_mode);
+//  printf("\nGOP timecode :\t%02d:%02d:%02d:%02d\tdrop : %d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames, tc->drop_mode);
     return 0;
 }
 
 static int parse_pic_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
 {
-    // if idx->temp_ref is not empty then the first octet was in the previous packet and its value was stored in idx->tem_ref which means
-    // only the first two bits of the second octet are needed
+//  if idx->temp_ref is not empty then the first octet was in the previous packet and its value was stored in idx->tem_ref which means
+//  only the first two bits of the second octet are needed
     int temp_ref = ((buf[0] << 8) + buf[1]) >> 6;
     idx->pic_type = (buf[1] >> 3) & 0x07;
-    printf("frame type : %x\ttemp_ref %d\n",idx->pic_type, temp_ref);
-    // calculation of timecode for current frame
+//  printf("frame type : %x\ttemp_ref %d\n",idx->pic_type, temp_ref);
+//  calculation of timecode for current frame
 
     idx->timecode = tc->gop_time;
     idx->timecode.frames = tc->gop_time.frames + temp_ref;
@@ -178,7 +178,7 @@ static int parse_pic_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
         idx->timecode.frames += 2;
         //FIXME readjust if frames > fps
     }
-    printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
+//  printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
     return 0;
 }
 
@@ -259,9 +259,7 @@ int main(int argc, char *argv[])
 
     stcontext.index = av_malloc(1000 * sizeof(Index));
     printf("creating index\n");
-//    int count = 0;
     while (1) {
-//        printf("------------------------PACKET n°%d-------------------\n",count++);
         ret = av_read_packet(ic, &pkt);
         if (ret < 0)
             break;
@@ -304,7 +302,6 @@ int main(int argc, char *argv[])
                     } else {
                         offset_t off = url_ftell(&stcontext.fc->pb) - pkt.size;
                         idx->pes_offset = pes_find_packet_start(&stcontext.fc->pb, off, st->id);
-                        printf("Current Offset : %lld\n",idx->pes_offset);
                     }
 
                     int bytes = FFMIN(pkt.size - i - 1, 2);
@@ -325,7 +322,7 @@ int main(int argc, char *argv[])
 //          records the offset of the packet in case the next picture start code begins in it and finishes in the next packet
             offset_t pkt_start = url_ftell(&stcontext.fc->pb) - pkt.size;
             last_offset = pes_find_packet_start(&stcontext.fc->pb, pkt_start, st->id);
-//            printf("last : %lld\n", last_offset);
+//          printf("last : %lld\n", last_offset);
         }
         av_free_packet(&pkt);
     }
