@@ -128,7 +128,7 @@ static int parse_gop_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
     tc->gop_time.hours   = idx->timecode.hours   = (buf[0] >> 2) & 0x1f;
     tc->gop_time.minutes = idx->timecode.minutes = (buf[0] & 0x03) << 4 | (buf[1] >> 4);
     tc->gop_time.seconds = idx->timecode.seconds = (buf[1] & 0x07) << 3 | (buf[2] >> 5);
-    tc->gop_time.frames  = idx->timecode.frames  = ((buf[2] & 0x1f) << 1 | (buf[3] >> 7));
+    tc->gop_time.frames  = idx->timecode.frames  = (buf[2] & 0x1f) << 1 | (buf[3] >> 7);
 //  printf("\nGOP timecode :\t%02d:%02d:%02d:%02d\tdrop : %d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames, tc->drop_mode);
     return 0;
 }
