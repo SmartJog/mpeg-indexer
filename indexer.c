@@ -145,8 +145,6 @@ static int parse_gop_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
 
 static int parse_pic_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
 {
-//  if idx->temp_ref is not empty then the first octet was in the previous packet and its value was stored in idx->tem_ref which means
-//  only the first two bits of the second octet are needed
     int temp_ref = ((buf[0] << 8) + buf[1]) >> 6;
     idx->pic_type = (buf[1] >> 3) & 0x07;
 //  printf("frame type : %x\ttemp_ref %d\n",idx->pic_type, temp_ref);
