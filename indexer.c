@@ -100,10 +100,8 @@ static int write_index(StreamContext *stcontext)
     index_size = url_close_dyn_buf(&indexpb, &index_buf);
     put_flush_packet(&indexpb);
     printf("index size %d\n", index_size);
-//  url_fopen(&indexpb, "index", URL_WRONLY);
     put_buffer(&stcontext->opb, index_buf, index_size);
     put_flush_packet(&stcontext->opb);
-//  url_fclose(&stcontext->opb);
     return 0;
 }
 
@@ -177,9 +175,7 @@ int main(int argc, char *argv[])
     AVPacket pkt;
     StreamContext stcontext;
     TimeContext tc;
-    uint8_t *buffer;
     int i, ret;
-    (void)buffer;
     uint32_t state = -1;
     offset_t last_offset = -1;
 
