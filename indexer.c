@@ -8,11 +8,6 @@
 
 //#define DEBUG
 
-typedef struct MpegDemuxContext {
-    int32_t header_state;
-    unsigned char psm_es_type[256];
-} MpegDemuxContext;
-
 typedef struct {
     int8_t hours;
     int8_t minutes;
@@ -37,14 +32,10 @@ typedef struct {
 typedef struct {
     AVFormatContext *fc;
     AVStream *video;
-    ByteIOContext pb;
     ByteIOContext opb;
     int need_gop;
     int need_pic;
-    uint8_t *idx;
-    unsigned int ind_size;
     uint64_t mpeg_size;
-    MpegDemuxContext mpg_demux_ctx;
     int frame_num;
     Index *index;
     int64_t current_pts[5];
