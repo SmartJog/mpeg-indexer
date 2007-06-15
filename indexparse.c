@@ -36,6 +36,7 @@ int main(int argc, char **argv)
     printf("magic %llx\n", get_le64(pb));
     printf("Version : %d\n", get_byte(pb));
     while (!url_feof(pb)) {
+        printf("-----------------------\n");
         printf("pts %lld\n", get_le64(pb));
         printf("dts %lld\n", get_le64(pb));
         printf("pes_offset %lld\n", get_le64(pb));
