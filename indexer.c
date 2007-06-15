@@ -8,7 +8,6 @@
 
 //#define DEBUG
 
-static const int fps_list[8] = {24, 24, 25, 30, 30, 50, 60, 60};
 typedef struct MpegDemuxContext {
     int32_t header_state;
     unsigned char psm_es_type[256];
