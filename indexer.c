@@ -43,9 +43,10 @@ typedef struct {
     int frame_duration;
 } StreamContext;
 
-static int idx_sort_by_pts(const void *idx1, const void *idx2)
+static int idx_sort_by_timecode(const void *idx1, const void *idx2)
 {
-    return ((Index *)idx1)->pts - ((Index *)idx2)->pts;
+    return (((Index*) idx1)->timecode.hours * 1000000 + ((Index*) idx1)->timecode.minutes * 10000 + ((Index*) idx1)->timecode.seconds * 100 + ((Index*) idx1)->timecode.frames) - 
+                (((Index*) idx2)->timecode.hours * 1000000 + ((Index*) idx2)->timecode.minutes * 10000 + ((Index*) idx2)->timecode.seconds * 100 + ((Index*) idx2)->timecode.frames);
 }
 
 extern AVInputFormat mpegps_demuxer;
@@ -81,7 +82,7 @@ static int write_index(StreamContext *stcontext)
     url_open_dyn_buf(&indexpb);
     int i;
 
-    qsort(stcontext->index, stcontext->frame_num, sizeof(Index), idx_sort_by_pts);
+    qsort(stcontext->index, stcontext->frame_num, sizeof(Index), idx_sort_by_timecode);
     put_le64(&indexpb, 0x534A2D494E444558LL);       // Magic number : SJ-INDEX in hex
     put_byte(&indexpb, 0x00000000);                 // Version
     for (i = 0; i < stcontext->frame_num; i++) {
