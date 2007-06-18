@@ -41,6 +41,7 @@ typedef struct {
     int64_t current_pts[5];
     int64_t current_dts[5];
     int frame_duration;
+    int fps;
 } StreamContext;
 
 static int idx_sort_by_pts(const void *idx1, const void *idx2)
@@ -84,6 +85,7 @@ static int write_index(StreamContext *stcontext)
     qsort(stcontext->index, stcontext->frame_num, sizeof(Index), idx_sort_by_pts);
     put_le64(&indexpb, 0x534A2D494E444558LL);       // Magic number : SJ-INDEX in hex
     put_byte(&indexpb, 0x00000000);                 // Version
+    put_byte(&indexpb, stcontext->fps);             // Frame Rate (will be needed when looking for a offset given a timecode)
     for (i = 0; i < stcontext->frame_num; i++) {
         Index *idx = &stcontext->index[i];
 //      printf("\ntimecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
@@ -227,6 +229,7 @@ int main(int argc, char *argv[])
 
     tc.fps = (float)stcontext.video->codec->time_base.den
         / stcontext.video->codec->time_base.num + 0.5;
+    stcontext.fps = tc.fps;
     stcontext.frame_duration = av_rescale(1, 90000, tc.fps);
     stcontext.fc = ic;
 #ifdef DEBUG
