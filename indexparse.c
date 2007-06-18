@@ -35,7 +35,6 @@ int main(int argc, char **argv)
     av_hex_dump(stdout, buffer, 16); \*/
     printf("magic %llx\n", get_le64(pb));
     printf("Version : %d\n", get_byte(pb));
-    printf("FPS : %d\n", get_byte(pb));
     while (!url_feof(pb)) {
         printf("-----------------------\n");
         printf("pts %lld\n", get_le64(pb));
