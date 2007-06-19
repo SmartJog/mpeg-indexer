@@ -1,4 +1,5 @@
 Index file specifications :
+Index file is wrttien in little endian
 Magic Number : 0x534A2D494E444558 (SJ-INDEX in hexadecimal) -> 64 bits
 Version      : 0x0000                                       -> 8 bits
 Index Data : 
