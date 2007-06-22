@@ -43,6 +43,7 @@ typedef struct {
     int64_t current_pts[5];
     int64_t current_dts[5];
     int frame_duration;
+    int64_t *pts_array;
 } StreamContext;
 
 static int idx_sort_by_pres_ref(const void *idx1, const void *idx2)
@@ -50,6 +51,10 @@ static int idx_sort_by_pres_ref(const void *idx1, const void *idx2)
     return ((Index *)idx1)->pres_ref - ((Index *)idx2)->pres_ref;
 }
 
+static int sort_pts_array(const void *pts1, const void *pts2)
+{
+    return (int64_t *)pts1 - (int64_t *)pts2;
+}
 extern AVInputFormat mpegps_demuxer;
 
 extern const uint8_t *ff_find_start_code(const uint8_t *p, const uint8_t *end, uint32_t *state);
@@ -83,13 +88,14 @@ static int write_index(StreamContext *stcontext)
     url_open_dyn_buf(&indexpb);
     int i;
 
+    qsort(stcontext->pts_array, stcontext->frame_num, sizeof(int64_t), sort_pts_array);
     qsort(stcontext->index, stcontext->frame_num, sizeof(Index), idx_sort_by_pres_ref);
     put_le64(&indexpb, 0x534A2D494E444558LL);       // Magic number : SJ-INDEX in hex
     put_byte(&indexpb, 0x00000000);                 // Version
     for (i = 0; i < stcontext->frame_num; i++) {
         Index *idx = &stcontext->index[i];
 //      printf("\ntimecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
-        put_le64(&indexpb, idx->pts);               // PTS
+        put_le64(&indexpb, stcontext->pts_array[i]);// PTS
         put_le64(&indexpb, idx->dts);               // DTS
         put_le64(&indexpb, idx->pes_offset);        // PES offset
         put_byte(&indexpb, idx->pic_type);          // Picture Type
@@ -111,8 +117,9 @@ static int write_index(StreamContext *stcontext)
 static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pkt, AVStream *st)
 {
     Index *oldidx = stc->frame_num ? &stc->index[stc->frame_num - 1] : NULL;
+    int64_t oldpts = stc->pts_array[stc->frame_num - 1];
     idx->dts = stc->current_dts[st->index];
-    idx->pts = stc->current_pts[st->index];
+    stc->pts_array[stc->frame_num] = stc->current_pts[st->index];
     printf("----------------------------\n");
     if (oldidx){
         printf("OLD timecode :\t%02d:%02d:%02d:%02d\n", oldidx->timecode.hours, oldidx->timecode.minutes, oldidx->timecode.seconds, oldidx->timecode.frames);
@@ -122,9 +129,9 @@ static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pk
             idx->dts = oldidx->dts + stc->frame_duration;
             printf("adjusting dts %lld -> %lld\n", stc->current_dts[st->index], idx->dts);
         }
-        if (idx->pts <= oldidx->pts) {
-            idx->pts = oldidx->pts + stc->frame_duration;
-            printf("adjusting pts %lld -> %lld\n", stc->current_pts[st->index], idx->pts);
+        if (stc->pts_array[stc->frame_num] <= oldpts) {
+            stc->pts_array[stc->frame_num] = oldpts + stc->frame_duration;
+            printf("adjusting pts %lld -> %lld\n", stc->current_pts[st->index], stc->pts_array[stc->frame_num]);
         }
     }
     return 0;
@@ -255,6 +262,7 @@ int main(int argc, char *argv[])
     }
 
     stcontext.index = av_malloc(1000 * sizeof(Index));
+    stcontext.pts_array = av_malloc(1000 * sizeof(int64_t));
     printf("creating index\n");
     while (1) {
         ret = av_read_packet(ic, &pkt);
@@ -309,13 +317,14 @@ int main(int argc, char *argv[])
                     if (!stcontext.need_pic)
                         parse_pic_timecode(idx, &tc, data_buf);
 
-                    if (!idx->pts)
+                    if (!stcontext.pts_array)
                         idx->pts=idx->dts;
 
                     idx_set(&stcontext, idx, &pkt, st);
                     stcontext.frame_num++;
                     if (!(stcontext.frame_num % 1000))
                         stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
+                        stcontext.pts_array = av_realloc(stcontext.pts_array, (stcontext.frame_num + 1000) * sizeof(int64_t));
                 }
             }
 //          records the offset of the packet in case the next picture start code begins in it and finishes in the next packet
