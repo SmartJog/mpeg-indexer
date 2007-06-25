@@ -305,10 +305,11 @@ int main(int argc, char *argv[])
                     if (!stcontext.need_pic)
                         parse_pic_timecode(idx, &tc, data_buf);
 
-                    if (!stcontext.pts_array)
-                        idx->pts=idx->dts;
-
                     idx_set(&stcontext, idx, &pkt, st);
+                    if (!stcontext.pts_array[stcontext.frame_num]){
+                        stcontext.pts_array[stcontext.frame_num]=idx->dts;
+                    }
+
                     stcontext.frame_num++;
                     if (!(stcontext.frame_num % 1000)){
                         stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
