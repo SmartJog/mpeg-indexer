@@ -120,10 +120,9 @@ static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pk
     int64_t oldpts = stc->pts_array[stc->frame_num - 1];
     idx->dts = stc->current_dts[st->index];
     stc->pts_array[stc->frame_num] = stc->current_pts[st->index];
-    printf("----------------------------\n");
     if (oldidx){
-        printf("OLD timecode :\t%02d:%02d:%02d:%02d\n", oldidx->timecode.hours, oldidx->timecode.minutes, oldidx->timecode.seconds, oldidx->timecode.frames);
-        printf("IDX timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
+        //printf("OLD timecode :\t%02d:%02d:%02d:%02d\n", oldidx->timecode.hours, oldidx->timecode.minutes, oldidx->timecode.seconds, oldidx->timecode.frames);
+        //printf("CUR timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
 
         if (idx->dts <= oldidx->dts) {
             idx->dts = oldidx->dts + stc->frame_duration;
@@ -339,6 +338,6 @@ int main(int argc, char *argv[])
     av_close_input_file(ic);
     url_fclose(&stcontext.opb);
     av_free(stcontext.index);
-    printf("frame num %d\n", stcontext.frame_num);
+    printf("%d frames\n", stcontext.frame_num);
     return 0;
 }
