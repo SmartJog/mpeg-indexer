@@ -1,4 +1,5 @@
-#include <ffmpeg/avformat.h>
+#ifndef INDEXER_H
+#define INDEXER_H
 
 typedef struct {
     int8_t hours;
@@ -15,3 +16,5 @@ typedef struct {
     offset_t pes_offset;
     Timecode timecode;
 } Index;
+
+#endif

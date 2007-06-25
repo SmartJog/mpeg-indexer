@@ -5,6 +5,9 @@
 
 #include "indexer.h"
 
+#ifndef INDEXER_C
+#define INDEXER_C
+
 #define GOP_START_CODE            0x000001b8
 #define PICTURE_START_CODE        0x00000100
 
@@ -327,3 +330,4 @@ int main(int argc, char *argv[])
     printf("%d frames\n", stcontext.frame_num);
     return 0;
 }
+#endif

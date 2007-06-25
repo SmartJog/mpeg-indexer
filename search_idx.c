@@ -3,6 +3,9 @@
 
 #include "indexer.h"
 
+#ifndef SEARCH_IDX
+#define SEARCH_IDX
+
 #define INDEX_SIZE 29
 #define HEADER_SIZE 9 
 
@@ -39,7 +42,7 @@ int search_frame(SearchContext search, Index *read_idx)
         read_idx->timecode.hours = get_byte(seek_pb);
 
         read_time = read_idx->timecode.hours * 1000000 + read_idx->timecode.minutes * 10000 + read_idx->timecode.seconds * 100 + read_idx->timecode.frames;
-        printf("");
+        printf("read time : %d, search time : %d\n", read_time, search_time);
         if (read_time == search_time){
             return 1;
         } else if (read_time > search_time) {
@@ -95,3 +98,4 @@ int main(int argc, char **argv)
     url_fclose(search.pb);
     return 0;
 }
+#endif
