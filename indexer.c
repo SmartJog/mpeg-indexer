@@ -263,8 +263,8 @@ int main(int argc, char *argv[])
         }
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
 //          records the offset of the packet in case the next picture start code begins in it and finishes in the next packet
-            offset_t pkt_start = url_ftell(&stcontext.fc->pb) - pkt.size;
-            offset_t last_offset = pes_find_packet_start(&stcontext.fc->pb, pkt_start, st->id);
+            offset_t pkt_start = url_ftell(&ic->pb) - pkt.size;
+            offset_t last_offset = pes_find_packet_start(&ic->pb, pkt_start, st->id);
 //          printf("last : %lld\n", last_offset);
 
             if (stcontext.need_pic) {
