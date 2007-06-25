@@ -181,6 +181,7 @@ int main(int argc, char *argv[])
     TimeContext tc;
     int i, ret;
     uint32_t state = -1;
+    offset_t last_pkt_offset = 0;
 
     memset(&stcontext, 0, sizeof(stcontext));
     memset(&tc, 0, sizeof(tc));
@@ -253,8 +254,8 @@ int main(int argc, char *argv[])
         }
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
 //          records the offset of the packet in case the next picture start code begins in it and finishes in the next packet
-            offset_t last_offset = pes_find_packet_start(&ic->pb, url_ftell(&ic->pb) - pkt.size, st->id);
-//          printf("last : %lld\n", last_offset);
+            offset_t pkt_offset = pes_find_packet_start(&ic->pb, url_ftell(&ic->pb) - pkt.size, st->id);
+//          printf("last : %lld\n", pkt_offset);
 
             if (stcontext.need_pic) {
                 memcpy(data_buf + 2 - stcontext.need_pic, pkt.data, stcontext.need_pic);
@@ -283,8 +284,8 @@ int main(int argc, char *argv[])
                     memcpy(data_buf, pkt.data + i + 1, bytes);
                     stcontext.need_pic = 2 - bytes;
 
-                    if (i > 2) // startcode begins in last packet
-                        idx->pes_offset = last_offset;
+                    // check if startcode begins in last packet
+                    idx->pes_offset = i < 3 ? last_pkt_offset : pkt_offset;
 
                     if (!stcontext.need_pic)
                         parse_pic_timecode(idx, &tc, data_buf);
@@ -301,6 +302,7 @@ int main(int argc, char *argv[])
                     }
                 }
             }
+            last_pkt_offset = pkt_offset;
         }
         av_free_packet(&pkt);
     }
