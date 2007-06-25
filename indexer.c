@@ -110,14 +110,14 @@ static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pk
         //printf("OLD timecode :\t%02d:%02d:%02d:%02d\n", oldidx->timecode.hours, oldidx->timecode.minutes, oldidx->timecode.seconds, oldidx->timecode.frames);
         //printf("CUR timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
 
-/*         if (idx->dts <= oldidx->dts) { */
-/*             idx->dts = oldidx->dts + stc->frame_duration; */
-/*             printf("adjusting dts %lld -> %lld\n", stc->current_dts[st->index], idx->dts); */
-/*         } */
-/*         if (stc->pts_array[stc->frame_num] <= oldpts) { */
-/*             stc->pts_array[stc->frame_num] = oldpts + stc->frame_duration; */
-/*             printf("adjusting pts %lld -> %lld\n", stc->current_pts[st->index], stc->pts_array[stc->frame_num]); */
-/*         } */
+        if (idx->dts <= oldidx->dts) {
+            idx->dts = oldidx->dts + stc->frame_duration;
+            printf("adjusting dts %lld -> %lld\n", stc->current_dts[st->index], idx->dts);
+        }
+        if (stc->pts_array[stc->frame_num] <= oldpts) {
+            stc->pts_array[stc->frame_num] = oldpts + stc->frame_duration;
+            printf("adjusting pts %lld -> %lld\n", stc->current_pts[st->index], stc->pts_array[stc->frame_num]);
+        }
     }
     return 0;
 }
