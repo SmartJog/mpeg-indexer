@@ -182,7 +182,6 @@ int main(int argc, char *argv[])
     TimeContext tc;
     int i, ret;
     uint32_t state = -1;
-    offset_t last_offset = -1;
 
     memset(&stcontext, 0, sizeof(stcontext));
     memset(&tc, 0, sizeof(tc));
@@ -263,6 +262,11 @@ int main(int argc, char *argv[])
             stcontext.current_pts[st->index] = pkt.pts;
         }
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
+//          records the offset of the packet in case the next picture start code begins in it and finishes in the next packet
+            offset_t pkt_start = url_ftell(&stcontext.fc->pb) - pkt.size;
+            offset_t last_offset = pes_find_packet_start(&stcontext.fc->pb, pkt_start, st->id);
+//          printf("last : %lld\n", last_offset);
+
             if (stcontext.need_pic) {
                 memcpy(data_buf + 2 - stcontext.need_pic, pkt.data, stcontext.need_pic);
                 parse_pic_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf);
@@ -286,17 +290,11 @@ int main(int argc, char *argv[])
                     if (!stcontext.need_gop)
                         parse_gop_timecode(idx, &tc, data_buf);
                 } else if (state == PICTURE_START_CODE) {
-                    if (i < 3) {
-                        printf("Picture start code begins in previous packet : %lld\n", last_offset);
-                        idx->pes_offset = last_offset;
-                    } else {
-                        offset_t off = url_ftell(&stcontext.fc->pb) - pkt.size;
-                        idx->pes_offset = pes_find_packet_start(&stcontext.fc->pb, off, st->id);
-                    }
-
                     int bytes = FFMIN(pkt.size - i - 1, 2);
                     memcpy(data_buf, pkt.data + i + 1, bytes);
                     stcontext.need_pic = 2 - bytes;
+
+                    idx->pes_offset = last_offset;
 
                     if (!stcontext.need_pic)
                         parse_pic_timecode(idx, &tc, data_buf);
@@ -313,10 +311,6 @@ int main(int argc, char *argv[])
                     }
                 }
             }
-//          records the offset of the packet in case the next picture start code begins in it and finishes in the next packet
-            offset_t pkt_start = url_ftell(&stcontext.fc->pb) - pkt.size;
-            last_offset = pes_find_packet_start(&stcontext.fc->pb, pkt_start, st->id);
-//          printf("last : %lld\n", last_offset);
         }
         av_free_packet(&pkt);
     }
