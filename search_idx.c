@@ -1,3 +1,6 @@
+#include <ffmpeg/avformat.h>
+#include <stdlib.h>
+
 #include "indexer.h"
 
 #define INDEX_SIZE 29

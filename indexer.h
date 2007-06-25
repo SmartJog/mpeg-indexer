@@ -1,5 +1,3 @@
-#include <ffmpeg/avformat.h>
-#include <stdlib.h>
 typedef struct {
     int8_t hours;
     int8_t minutes;

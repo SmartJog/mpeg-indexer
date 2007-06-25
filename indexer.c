@@ -1,5 +1,8 @@
+#include <ffmpeg/avformat.h>
+#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+
 #include "indexer.h"
 
 #define GOP_START_CODE            0x000001b8
