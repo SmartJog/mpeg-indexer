@@ -293,7 +293,8 @@ int main(int argc, char *argv[])
                     memcpy(data_buf, pkt.data + i + 1, bytes);
                     stcontext.need_pic = 2 - bytes;
 
-                    idx->pes_offset = last_offset;
+                    if (i > 2) // startcode begins in last packet
+                        idx->pes_offset = last_offset;
 
                     if (!stcontext.need_pic)
                         parse_pic_timecode(idx, &tc, data_buf);
