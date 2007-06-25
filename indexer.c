@@ -269,7 +269,6 @@ int main(int argc, char *argv[])
             if (stcontext.need_pic) {
                 memcpy(data_buf + 2 - stcontext.need_pic, pkt.data, stcontext.need_pic);
                 parse_pic_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf);
-                idx_set(&stcontext, &stcontext.index[stcontext.frame_num-1], &pkt, st);
                 stcontext.need_pic = 0;
                 assert(stcontext.index[stcontext.frame_num-1].pic_type > 0 &&
                        stcontext.index[stcontext.frame_num-1].pic_type < 4);

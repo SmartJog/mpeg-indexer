@@ -3,9 +3,6 @@
 
 #include "indexer.h"
 
-#ifndef SEARCH_IDX
-#define SEARCH_IDX
-
 #define INDEX_SIZE 29
 #define HEADER_SIZE 9 
 
@@ -98,4 +95,3 @@ int main(int argc, char **argv)
     url_fclose(search.pb);
     return 0;
 }
-#endif
