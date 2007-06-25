@@ -58,7 +58,6 @@ int main(int argc, char **argv)
     ByteIOContext mpeg1, *mpeg = NULL;
     Index read_idx;
 
-
     search.pb = &pb1;
     if (argc < 6) {
         printf("usage: search_idx <index file> <hours> <minutes> <seconds> <frames>\n");
@@ -82,7 +81,11 @@ int main(int argc, char **argv)
     search.timecode.seconds = atoi(argv[4]);
     search.timecode.frames = atoi(argv[5]);
     printf("Index size : %lld\n", search.size);
-    printf("magic %llx\n", get_le64(search.pb));
+    int64_t magic = get_le64(search.pb);
+    if (magic != 0x534A2D494E444558LL){
+        printf("%s is not an Mpeg index file.\n", argv[1]);
+        return 1;
+    }
     printf("Version : %d\n", get_byte(search.pb));
 //    printf("Looking for frame with timecode : %02d:%02d:%02d:%02d\n",time.hours ,time.minutes ,time.seconds ,time.frames );
 
