@@ -39,7 +39,7 @@ int search_frame(SearchContext search, Index *read_idx)
         read_idx->timecode.hours = get_byte(seek_pb);
 
         read_time = read_idx->timecode.hours * 1000000 + read_idx->timecode.minutes * 10000 + read_idx->timecode.seconds * 100 + read_idx->timecode.frames;
-
+        printf("");
         if (read_time == search_time){
             return 1;
         } else if (read_time > search_time) {
