@@ -25,8 +25,8 @@ typedef struct {
     int need_pic;
     int frame_num;
     Index *index;
-    int64_t current_pts[5];
-    int64_t current_dts[5];
+    int64_t current_pts;
+    int64_t current_dts;
     int frame_duration;
     int64_t *pts_array;
 } StreamContext;
@@ -103,19 +103,19 @@ static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pk
 {
     Index *oldidx = stc->frame_num ? &stc->index[stc->frame_num - 1] : NULL;
     int64_t oldpts = stc->pts_array[stc->frame_num - 1];
-    idx->dts = stc->current_dts[st->index];
-    stc->pts_array[stc->frame_num] = stc->current_pts[st->index];
+    idx->dts = stc->current_dts;
+    stc->pts_array[stc->frame_num] = stc->current_pts;
     if (oldidx){
         //printf("OLD timecode :\t%02d:%02d:%02d:%02d\n", oldidx->timecode.hours, oldidx->timecode.minutes, oldidx->timecode.seconds, oldidx->timecode.frames);
         //printf("CUR timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
 
         if (idx->dts <= oldidx->dts) {
             idx->dts = oldidx->dts + stc->frame_duration;
-            printf("adjusting dts %lld -> %lld\n", stc->current_dts[st->index], idx->dts);
+//            printf("adjusting dts %lld -> %lld\n", stc->current_dts, idx->dts);
         }
         if (stc->pts_array[stc->frame_num] <= oldpts) {
             stc->pts_array[stc->frame_num] = oldpts + stc->frame_duration;
-            printf("adjusting pts %lld -> %lld\n", stc->current_pts[st->index], stc->pts_array[stc->frame_num]);
+//            printf("adjusting pts %lld -> %lld\n", stc->current_pts, stc->pts_array[stc->frame_num]);
         }
     }
     return 0;
@@ -249,8 +249,8 @@ int main(int argc, char *argv[])
 
         st = ic->streams[pkt.stream_index];
         if (pkt.dts != AV_NOPTS_VALUE) {
-            stcontext.current_dts[st->index] = pkt.dts;
-            stcontext.current_pts[st->index] = pkt.pts;
+            stcontext.current_dts = pkt.dts;
+            stcontext.current_pts = pkt.pts;
         }
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
 //          records the offset of the packet in case the next picture start code begins in it and finishes in the next packet
