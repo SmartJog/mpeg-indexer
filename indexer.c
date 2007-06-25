@@ -310,9 +310,10 @@ int main(int argc, char *argv[])
 
                     idx_set(&stcontext, idx, &pkt, st);
                     stcontext.frame_num++;
-                    if (!(stcontext.frame_num % 1000))
+                    if (!(stcontext.frame_num % 1000)){
                         stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
                         stcontext.pts_array = av_realloc(stcontext.pts_array, (stcontext.frame_num + 1000) * sizeof(int64_t));
+                    }
                 }
             }
 //          records the offset of the packet in case the next picture start code begins in it and finishes in the next packet
@@ -327,6 +328,7 @@ int main(int argc, char *argv[])
     av_close_input_file(ic);
     url_fclose(&stcontext.opb);
     av_free(stcontext.index);
+    av_free(stcontext.pts_array);
     printf("%d frames\n", stcontext.frame_num);
     return 0;
 }
