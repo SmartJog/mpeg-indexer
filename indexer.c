@@ -23,7 +23,6 @@ typedef struct {
     ByteIOContext opb;
     int need_gop;
     int need_pic;
-    uint64_t mpeg_size;
     int frame_num;
     Index *index;
     int64_t current_pts[5];
@@ -233,12 +232,6 @@ int main(int argc, char *argv[])
         / stcontext.video->codec->time_base.num + 0.5;
     stcontext.frame_duration = av_rescale(1, 90000, tc.fps);
     stcontext.fc = ic;
-#ifdef DEBUG
-    stcontext.mpeg_size = 400 * BUFFER_SIZE;
-#else
-    stcontext.mpeg_size = url_fsize(&ic->pb);
-#endif
-    printf("MPEG size %lld\n", stcontext.mpeg_size);
 
     if (url_fopen(&stcontext.opb, argv[2], URL_WRONLY) < 0) {
         printf("error opening outfile: %s\n", argv[2]);
@@ -252,10 +245,7 @@ int main(int argc, char *argv[])
         ret = av_read_packet(ic, &pkt);
         if (ret < 0)
             break;
-#ifdef DEBUG
-        if (url_ftell(&ic->pb) > 400 * ic->pb.buffer_size)
-            break;
-#endif
+
         st = ic->streams[pkt.stream_index];
         if (pkt.dts != AV_NOPTS_VALUE) {
             stcontext.current_dts[st->index] = pkt.dts;
