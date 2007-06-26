@@ -99,12 +99,11 @@ int main(int argc, char **argv)
     printf("Version : %d\n", get_byte(search.pb));
 //    printf("Looking for frame with timecode : %02d:%02d:%02d:%02d\n",time.hours ,time.minutes ,time.seconds ,time.frames );
 
-
     int res = search_frame(search, &read_idx); 
     if (!res)
         printf("Frame could not be found, check input data\n");
     else if (res == -1)
-        printf("File timecode starts at %02d:%02d:%02d:%02d\n", read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames);
+        printf("Video starts at %02d:%02d:%02d:%02d\n", read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames);
     else
         printf("Offset : %lld\n", read_idx.pes_offset);
     url_fclose(search.pb);
