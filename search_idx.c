@@ -12,6 +12,18 @@ typedef struct{
     Timecode timecode;
 } SearchContext;
 
+static av_always_inline int compute_idx(Index *read_idx, ByteIOContext *seek_pb)
+{
+    read_idx->pts = get_le64(seek_pb);
+    read_idx->dts = get_le64(seek_pb);
+    read_idx->pes_offset = get_le64(seek_pb);
+    read_idx->pic_type = get_byte(seek_pb);
+    read_idx->timecode.frames = get_byte(seek_pb);
+    read_idx->timecode.seconds = get_byte(seek_pb);
+    read_idx->timecode.minutes = get_byte(seek_pb);
+    read_idx->timecode.hours = get_byte(seek_pb);
+    return read_idx->timecode.hours * 1000000 + read_idx->timecode.minutes * 10000 + read_idx->timecode.seconds * 100 + read_idx->timecode.frames;
+}
 int search_frame(SearchContext search, Index *read_idx)
 {
     int low = 0;
@@ -22,24 +34,22 @@ int search_frame(SearchContext search, Index *read_idx)
     search_time = search.timecode.hours * 1000000 + search.timecode.minutes * 10000 + search.timecode.seconds * 100 + search.timecode.frames;
 
     printf("%d indexes\n", nb_index);
-
     seek_pb = search.pb;
+
+    // Checks if the timecode we want is inferior to the first timecode in the file
+    read_time = compute_idx(read_idx, seek_pb);
+    if (read_time == search_time){
+        return 1;
+    } else if (read_time > search_time) {
+        return -1;
+    }
     while (low <= search.size) {
         mid = (int)((search.size + low) / 2);
         mid -= (mid % INDEX_SIZE) - HEADER_SIZE ;
 
         url_fseek(seek_pb, mid, SEEK_SET);
-        read_idx->pts = get_le64(seek_pb);
-        read_idx->dts = get_le64(seek_pb);
-        read_idx->pes_offset = get_le64(seek_pb);
-        read_idx->pic_type = get_byte(seek_pb);
-        read_idx->timecode.frames = get_byte(seek_pb);
-        read_idx->timecode.seconds = get_byte(seek_pb);
-        read_idx->timecode.minutes = get_byte(seek_pb);
-        read_idx->timecode.hours = get_byte(seek_pb);
-
-        read_time = read_idx->timecode.hours * 1000000 + read_idx->timecode.minutes * 10000 + read_idx->timecode.seconds * 100 + read_idx->timecode.frames;
-        printf("read time : %d, search time : %d\n", read_time, search_time);
+        read_time = compute_idx(read_idx, seek_pb);
+        //printf("read time : %d, search time : %d\n", read_time, search_time);
         if (read_time == search_time){
             return 1;
         } else if (read_time > search_time) {
@@ -93,6 +103,8 @@ int main(int argc, char **argv)
     int res = search_frame(search, &read_idx); 
     if (!res)
         printf("Frame could not be found, check input data\n");
+    else if (res == -1)
+        printf("File timecode starts at %02d:%02d:%02d:%02d\n", read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames);
     else
         printf("Offset : %lld\n", read_idx.pes_offset);
     url_fclose(search.pb);
