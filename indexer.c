@@ -28,18 +28,13 @@ typedef struct {
     int64_t current_pts;
     int64_t current_dts;
     int frame_duration;
-    int64_t *pts_array;
 } StreamContext;
 
-static int idx_sort_by_pres_ref(const void *idx1, const void *idx2)
+static int idx_sort_by_pts(const void *idx1, const void *idx2)
 {
-    return ((Index *)idx1)->pres_ref - ((Index *)idx2)->pres_ref;
+    return ((Index *)idx1)->pts - ((Index *)idx2)->pts;
 }
 
-static int sort_pts_array(const void *pts1, const void *pts2)
-{
-    return (int64_t *)pts1 - (int64_t *)pts2;
-}
 extern AVInputFormat mpegps_demuxer;
 
 extern const uint8_t *ff_find_start_code(const uint8_t *p, const uint8_t *end, uint32_t *state);
@@ -73,14 +68,13 @@ static int write_index(StreamContext *stcontext)
     url_open_dyn_buf(&indexpb);
     int i;
 
-    qsort(stcontext->pts_array, stcontext->frame_num, sizeof(int64_t), sort_pts_array);
-    qsort(stcontext->index, stcontext->frame_num, sizeof(Index), idx_sort_by_pres_ref);
+    qsort(stcontext->index, stcontext->frame_num, sizeof(Index), idx_sort_by_pts);
     put_le64(&indexpb, 0x534A2D494E444558LL);       // Magic number : SJ-INDEX in hex
     put_byte(&indexpb, 0x00000000);                 // Version
     for (i = 0; i < stcontext->frame_num; i++) {
         Index *idx = &stcontext->index[i];
 //      printf("\ntimecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
-        put_le64(&indexpb, stcontext->pts_array[i]);// PTS
+        put_le64(&indexpb, idx->pts);               // PTS
         put_le64(&indexpb, idx->dts);               // DTS
         put_le64(&indexpb, idx->pes_offset);        // PES offset
         put_byte(&indexpb, idx->pic_type);          // Picture Type
@@ -102,20 +96,13 @@ static int write_index(StreamContext *stcontext)
 static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pkt, AVStream *st)
 {
     Index *oldidx = stc->frame_num ? &stc->index[stc->frame_num - 1] : NULL;
-    int64_t oldpts = stc->pts_array[stc->frame_num - 1];
     idx->dts = stc->current_dts;
-    stc->pts_array[stc->frame_num] = stc->current_pts;
+    idx->pts = stc->current_pts;
     if (oldidx){
-        //printf("OLD timecode :\t%02d:%02d:%02d:%02d\n", oldidx->timecode.hours, oldidx->timecode.minutes, oldidx->timecode.seconds, oldidx->timecode.frames);
-        //printf("CUR timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
-
         if (idx->dts <= oldidx->dts) {
             idx->dts = oldidx->dts + stc->frame_duration;
-//            printf("adjusting dts %lld -> %lld\n", stc->current_dts, idx->dts);
-        }
-        if (stc->pts_array[stc->frame_num] <= oldpts) {
-            stc->pts_array[stc->frame_num] = oldpts + stc->frame_duration;
-//            printf("adjusting pts %lld -> %lld\n", stc->current_pts, stc->pts_array[stc->frame_num]);
+            idx->pts = oldidx->dts + stc->frame_duration;
+            printf("adjusting dts %lld -> %lld\n", stc->current_dts, idx->dts);
         }
     }
     return 0;
@@ -138,7 +125,7 @@ static int parse_pic_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
 {
     int temp_ref = (buf[0] << 2) | (buf[1] >> 6);
     idx->pic_type = (buf[1] >> 3) & 0x07;
-//  printf("frame type : %x\ttemp_ref %d\n",idx->pic_type, temp_ref);
+  printf("frame type : %x\ttemp_ref %d\n",idx->pic_type, temp_ref);
 //  calculation of timecode for current frame
 
     idx->timecode = tc->gop_time;
@@ -169,6 +156,23 @@ static int parse_pic_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
     }
     idx->pres_ref = (tc->gop_num << 16) + temp_ref;
 //  printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
+    return 0;
+}
+
+static int calculate_pts_from_dts(StreamContext *stc)
+{
+    int i = 0, j; 
+        while (i < stc->frame_num && stc->index[i].pic_type == 3){
+            i++;
+        }
+        j = i+1;
+        while (j < stc->frame_num && stc->index[j].pic_type == 3){
+            j++;
+        }
+        if (&stc->index[j])
+            stc->index[i].pts = stc->index[j].dts;
+        else
+            stc->index[i].pts = stc->index[i-1].pts + stc->frame_duration;
     return 0;
 }
 
@@ -240,9 +244,9 @@ int main(int argc, char *argv[])
     }
 
     stcontext.index = av_malloc(1000 * sizeof(Index));
-    stcontext.pts_array = av_malloc(1000 * sizeof(int64_t));
     printf("creating index\n");
-    while (1) {
+    while (1) { 
+        printf("---------PACKET----------------\n");
         ret = av_read_packet(ic, &pkt);
         if (ret < 0)
             break;
@@ -291,14 +295,9 @@ int main(int argc, char *argv[])
                         parse_pic_timecode(idx, &tc, data_buf);
 
                     idx_set(&stcontext, idx, &pkt, st);
-                    if (!stcontext.pts_array[stcontext.frame_num]){
-                        stcontext.pts_array[stcontext.frame_num]=idx->dts;
-                    }
-
                     stcontext.frame_num++;
                     if (!(stcontext.frame_num % 1000)){
                         stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
-                        stcontext.pts_array = av_realloc(stcontext.pts_array, (stcontext.frame_num + 1000) * sizeof(int64_t));
                     }
                 }
             }
@@ -306,12 +305,11 @@ int main(int argc, char *argv[])
         }
         av_free_packet(&pkt);
     }
-
+    calculate_pts_from_dts(&stcontext);
     write_index(&stcontext);
     av_close_input_file(ic);
     url_fclose(&stcontext.opb);
     av_free(stcontext.index);
-    av_free(stcontext.pts_array);
     printf("%d frames\n", stcontext.frame_num);
     return 0;
 }

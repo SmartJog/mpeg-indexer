@@ -49,7 +49,7 @@ int search_frame(SearchContext search, Index *read_idx)
 
         url_fseek(seek_pb, mid, SEEK_SET);
         read_time = compute_idx(read_idx, seek_pb);
-        //printf("read time : %d, search time : %d\n", read_time, search_time);
+        //printf("read time : %08d, search time : %08d\n", read_time, search_time);
         if (read_time == search_time){
             return 1;
         } else if (read_time > search_time) {
@@ -75,11 +75,11 @@ int main(int argc, char **argv)
     }
 
     register_protocol(&file_protocol);
-        if (url_fopen(&mpeg1, argv[1], URL_RDONLY) < 0) {
-            printf("error opening file %s\n", argv[1]);
-            return 1;
-        }
-        mpeg = &mpeg1;
+    if (url_fopen(&mpeg1, argv[1], URL_RDONLY) < 0) {
+        printf("error opening file %s\n", argv[1]);
+        return 1;
+    }
+    mpeg = &mpeg1;
 
     if (url_fopen(search.pb, argv[1], URL_RDONLY) < 0) {
         printf("error opening file %s\n", argv[1]);
@@ -93,19 +93,20 @@ int main(int argc, char **argv)
     printf("Index size : %lld\n", search.size);
     int64_t magic = get_le64(search.pb);
     if (magic != 0x534A2D494E444558LL){
-        printf("%s is not an Mpeg index file.\n", argv[1]);
+        printf("%s is not an index file.\n", argv[1]);
         return 1;
     }
     printf("Version : %d\n", get_byte(search.pb));
 //    printf("Looking for frame with timecode : %02d:%02d:%02d:%02d\n",time.hours ,time.minutes ,time.seconds ,time.frames );
 
     int res = search_frame(search, &read_idx); 
-    if (!res)
+    if (!res){
         printf("Frame could not be found, check input data\n");
-    else if (res == -1)
+    } else if (res == -1) {
         printf("Video starts at %02d:%02d:%02d:%02d\n", read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames);
-    else
+    } else {
         printf("Offset : %lld\n", read_idx.pes_offset);
+    }
     url_fclose(search.pb);
     return 0;
 }
