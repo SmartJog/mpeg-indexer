@@ -73,7 +73,6 @@ static int write_index(StreamContext *stcontext)
     put_byte(&indexpb, 0x00000000);                 // Version
     for (i = 0; i < stcontext->frame_num; i++) {
         Index *idx = &stcontext->index[i];
-//      printf("\ntimecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
         put_le64(&indexpb, idx->pts);               // PTS
         put_le64(&indexpb, idx->dts);               // DTS
         put_le64(&indexpb, idx->pes_offset);        // PES offset
@@ -102,7 +101,7 @@ static av_always_inline int idx_set_timestamps(StreamContext *stc, Index *idx, A
         if (idx->dts <= oldidx->dts) {
             idx->dts = oldidx->dts + stc->frame_duration;
             idx->pts = oldidx->dts + stc->frame_duration;
-            printf("adjusting dts %lld -> %lld\n", stc->current_dts, idx->dts);
+//            printf("adjusting dts %lld -> %lld\n", stc->current_dts, idx->dts);
         }
     }
     return 0;
@@ -125,8 +124,8 @@ static int parse_pic_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
 {
     int temp_ref = (buf[0] << 2) | (buf[1] >> 6);
     idx->pic_type = (buf[1] >> 3) & 0x07;
-//  calculation of timecode for current frame
 
+//  calculation of timecode for current frame
     idx->timecode = tc->gop_time;
     idx->timecode.frames = tc->gop_time.frames + temp_ref;
 
@@ -171,8 +170,6 @@ static int calculate_pts_from_dts(StreamContext *stc)
             i++;
         while (j < stc->frame_num && stc->index[j].pic_type == 3)
             j++;
-
-//        printf("i : %d, idxtype : %d\t j : %d, idxtype : %d\n", i, stc->index[i].pic_type, j,  stc->index[j].pic_type );
     }
     return 0;
 }
@@ -259,7 +256,6 @@ int main(int argc, char *argv[])
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
 //          records the offset of the packet in case the next picture start code begins in it and finishes in the next packet
             offset_t pkt_offset = pes_find_packet_start(&ic->pb, url_ftell(&ic->pb) - pkt.size, st->id);
-//          printf("last : %lld\n", pkt_offset);
 
             if (stcontext.need_pic) {
                 memcpy(data_buf + 2 - stcontext.need_pic, pkt.data, stcontext.need_pic);
