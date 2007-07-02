@@ -32,7 +32,6 @@ int search_frame(SearchContext search, Index *read_idx)
     ByteIOContext *seek_pb = NULL;
     uint32_t read_time; // used to store the timecode members in a single 32 bits integer to facilitate comparison 
     int nb_index = (int)(search.size / INDEX_SIZE);
-    //search_time = search.timecode.hours * 1000000 + search.timecode.minutes * 10000 + search.timecode.seconds * 100 + search.timecode.frames;
 
     printf("%d indexes\n", nb_index);
     seek_pb = search.pb;
@@ -50,7 +49,6 @@ int search_frame(SearchContext search, Index *read_idx)
 
         url_fseek(seek_pb, mid, SEEK_SET);
         read_time = compute_idx(read_idx, seek_pb);
-        //printf("read time : %08d, search time : %08d\n", read_time, search_time);
         if (read_time == search.search_time){
             return 1;
         } else if (read_time > search.search_time) {
