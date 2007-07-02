@@ -9,7 +9,7 @@
 typedef struct{
     uint64_t size;
     ByteIOContext *pb;
-    Timecode timecode;
+    uint32_t search_time;
 } SearchContext;
 
 static av_always_inline int compute_idx(Index *read_idx, ByteIOContext *seek_pb)
@@ -30,18 +30,18 @@ int search_frame(SearchContext search, Index *read_idx)
     int low = 0;
     int mid = search.size / 2;
     ByteIOContext *seek_pb = NULL;
-    uint32_t read_time, search_time; // used to store the timecode members in a single 32 bits integer to facilitate comparison 
+    uint32_t read_time; // used to store the timecode members in a single 32 bits integer to facilitate comparison 
     int nb_index = (int)(search.size / INDEX_SIZE);
-    search_time = search.timecode.hours * 1000000 + search.timecode.minutes * 10000 + search.timecode.seconds * 100 + search.timecode.frames;
+    //search_time = search.timecode.hours * 1000000 + search.timecode.minutes * 10000 + search.timecode.seconds * 100 + search.timecode.frames;
 
     printf("%d indexes\n", nb_index);
     seek_pb = search.pb;
 
     // Checks if the timecode we want is inferior to the first timecode in the file
     read_time = compute_idx(read_idx, seek_pb);
-    if (read_time == search_time){
+    if (read_time == search.search_time){
         return 1;
-    } else if (read_time > search_time) {
+    } else if (read_time > search.search_time) {
         return -1;
     }
     while (low <= search.size) {
@@ -51,11 +51,11 @@ int search_frame(SearchContext search, Index *read_idx)
         url_fseek(seek_pb, mid, SEEK_SET);
         read_time = compute_idx(read_idx, seek_pb);
         //printf("read time : %08d, search time : %08d\n", read_time, search_time);
-        if (read_time == search_time){
+        if (read_time == search.search_time){
             return 1;
-        } else if (read_time > search_time) {
+        } else if (read_time > search.search_time) {
             search.size = mid - INDEX_SIZE;
-        } else if (read_time < search_time) {
+        } else if (read_time < search.search_time) {
             low = mid + INDEX_SIZE;
         }
     }
@@ -70,8 +70,8 @@ int main(int argc, char **argv)
     Index read_idx;
 
     search.pb = &pb1;
-    if (argc < 6) {
-        printf("usage: search_idx <index file> <hours> <minutes> <seconds> <frames>\n");
+    if (argc < 3) {
+        printf("usage: search_idx <index file> <hhmmssff>\n");
         return 1;
     }
 
@@ -87,18 +87,20 @@ int main(int argc, char **argv)
         return 1;
     }
     search.size = url_fsize(search.pb) - HEADER_SIZE;
-    search.timecode.hours = atoi(argv[2]);
-    search.timecode.minutes = atoi(argv[3]);
-    search.timecode.seconds = atoi(argv[4]);
-    search.timecode.frames = atoi(argv[5]);
+    if (argv[2][8] != '\0'){
+        printf("invalid time value\n\ttime must be input as follow : hhmmssff\n");
+        return 0;
+    }
+    search.search_time = atoi(argv[2]);
+
     printf("Index size : %lld\n", search.size);
     int64_t magic = get_le64(search.pb);
     if (magic != 0x534A2D494E444558LL){
         printf("%s is not an index file.\n", argv[1]);
         return 1;
     }
-    printf("Version : %d\n", get_byte(search.pb));
-//    printf("Looking for frame with timecode : %02d:%02d:%02d:%02d\n",time.hours ,time.minutes ,time.seconds ,time.frames );
+//    printf("Version : %d\n", get_byte(search.pb));
+    printf("Looking for frame with timecode : %c%c:%c%c:%c%c:%c%c\n",argv[2][0], argv[2][1], argv[2][2], argv[2][3], argv[2][4], argv[2][5], argv[2][6], argv[2][7]);
 
     int res = search_frame(search, &read_idx); 
     if (!res){
