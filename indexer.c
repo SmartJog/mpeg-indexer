@@ -302,6 +302,9 @@ int main(int argc, char *argv[])
         av_free_packet(&pkt);
     }
     calculate_pts_from_dts(&stcontext);
+    int k;
+    for (k = 0; k < stcontext.frame_num; k++)
+        printf("----------\npts %lld\ndts %lld\n", stcontext.index[k].pts, stcontext.index[k].dts);
     write_index(&stcontext);
     av_close_input_file(ic);
     url_fclose(&stcontext.opb);

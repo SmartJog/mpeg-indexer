@@ -24,6 +24,7 @@ static av_always_inline int compute_idx(Index *read_idx, ByteIOContext *seek_pb)
     read_idx->timecode.hours = get_byte(seek_pb);
     return read_idx->timecode.hours * 1000000 + read_idx->timecode.minutes * 10000 + read_idx->timecode.seconds * 100 + read_idx->timecode.frames;
 }
+
 int search_frame(SearchContext search, Index *read_idx)
 {
     int low = 0;
@@ -105,6 +106,21 @@ int main(int argc, char **argv)
     } else if (res == -1) {
         printf("Video starts at %02d:%02d:%02d:%02d\n", read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames);
     } else {
+        char frame = 'U';
+        switch(read_idx.pic_type){
+            case 1 : 
+                frame = 'I';
+                break;
+            case 2 : 
+                frame = 'P';
+                break;
+            case 3 :
+                frame = 'B';
+                break;
+            default :
+                printf("type of frame unknown\n");
+        }
+        printf("DTS : %lld\nPTS : %lld\nType of frame : %c\n", read_idx.dts, read_idx.pts, frame);
         printf("Offset : %lld\n", read_idx.pes_offset);
     }
     url_fclose(search.pb);
