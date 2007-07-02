@@ -125,7 +125,6 @@ static int parse_pic_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
 {
     int temp_ref = (buf[0] << 2) | (buf[1] >> 6);
     idx->pic_type = (buf[1] >> 3) & 0x07;
-  printf("frame type : %x\ttemp_ref %d\n",idx->pic_type, temp_ref);
 //  calculation of timecode for current frame
 
     idx->timecode = tc->gop_time;
@@ -161,18 +160,20 @@ static int parse_pic_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
 
 static int calculate_pts_from_dts(StreamContext *stc)
 {
-    int i = 0, j; 
-        while (i < stc->frame_num && stc->index[i].pic_type == 3){
+    int i = 0, j = 1; 
+    while (i < stc->frame_num && j < stc->frame_num){
+        if (stc->index[i].pic_type != 3 && stc->index[j].pic_type != 3){
+            stc->index[i].pts = stc->index[j].dts;
             i++;
-        }
-        j = i+1;
-        while (j < stc->frame_num && stc->index[j].pic_type == 3){
             j++;
         }
-        if (&stc->index[j])
-            stc->index[i].pts = stc->index[j].dts;
-        else
-            stc->index[i].pts = stc->index[i-1].pts + stc->frame_duration;
+        while (i < stc->frame_num && stc->index[i].pic_type == 3)
+            i++;
+        while (j < stc->frame_num && stc->index[j].pic_type == 3)
+            j++;
+
+        printf("i : %d, idxtype : %d\t j : %d, idxtype : %d\n", i, stc->index[i].pic_type, j,  stc->index[j].pic_type );
+    }
     return 0;
 }
 
@@ -246,7 +247,6 @@ int main(int argc, char *argv[])
     stcontext.index = av_malloc(1000 * sizeof(Index));
     printf("creating index\n");
     while (1) { 
-        printf("---------PACKET----------------\n");
         ret = av_read_packet(ic, &pkt);
         if (ret < 0)
             break;
