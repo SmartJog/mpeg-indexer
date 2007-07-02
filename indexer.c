@@ -93,7 +93,7 @@ static int write_index(StreamContext *stcontext)
 }
 
 
-static av_always_inline int idx_set(StreamContext *stc, Index *idx, AVPacket *pkt, AVStream *st)
+static av_always_inline int idx_set_timestamps(StreamContext *stc, Index *idx, AVPacket *pkt, AVStream *st)
 {
     Index *oldidx = stc->frame_num ? &stc->index[stc->frame_num - 1] : NULL;
     idx->dts = stc->current_dts;
@@ -172,7 +172,7 @@ static int calculate_pts_from_dts(StreamContext *stc)
         while (j < stc->frame_num && stc->index[j].pic_type == 3)
             j++;
 
-        printf("i : %d, idxtype : %d\t j : %d, idxtype : %d\n", i, stc->index[i].pic_type, j,  stc->index[j].pic_type );
+//        printf("i : %d, idxtype : %d\t j : %d, idxtype : %d\n", i, stc->index[i].pic_type, j,  stc->index[j].pic_type );
     }
     return 0;
 }
@@ -294,7 +294,7 @@ int main(int argc, char *argv[])
                     if (!stcontext.need_pic)
                         parse_pic_timecode(idx, &tc, data_buf);
 
-                    idx_set(&stcontext, idx, &pkt, st);
+                    idx_set_timestamps(&stcontext, idx, &pkt, st);
                     stcontext.frame_num++;
                     if (!(stcontext.frame_num % 1000)){
                         stcontext.index = av_realloc(stcontext.index, (stcontext.frame_num + 1000) * sizeof(Index));
