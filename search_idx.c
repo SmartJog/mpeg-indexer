@@ -139,6 +139,8 @@ int main(int argc, char **argv)
     SearchContext search;
     Index read_idx;
     Index *key_frame = NULL;
+    ByteIOContext pb1;
+    search.pb = &pb1;
 
     if (argc < 4) {
         printf("usage: search_idx <parameter type> <index file> <hhmmssff>\n");
