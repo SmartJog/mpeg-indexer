@@ -13,6 +13,7 @@ typedef struct{
     int index_binary_offset;
     uint8_t start_at;
     int key_frame_num;
+    char mode;
 } SearchContext;
 
 static av_always_inline int compute_idx(Index *read_idx, ByteIOContext *seek_pb)
@@ -39,9 +40,13 @@ int search_frame_by_timecode(SearchContext *search, Index *read_idx)
     printf("%d indexes\n", nb_index);
     seek_pb = search->pb;
 
-    // Checks if the timecode we want is inferior or equal to the first timecode in the file
+    // Checks if the value we want is inferior or equal to the first value in the file
     url_fseek(seek_pb, HEADER_SIZE, SEEK_SET); // reads the first index in the file
     read_time = compute_idx(read_idx, seek_pb);
+    if (search->mode == 'p') {                   // if the program was given a pts
+        read_time = read_idx->pts;
+    }
+
     if (read_time == search->search_time){
         return 1;
     } else if (read_time > search->search_time) {
@@ -53,6 +58,9 @@ int search_frame_by_timecode(SearchContext *search, Index *read_idx)
 
         url_fseek(seek_pb, mid, SEEK_SET);
         read_time = compute_idx(read_idx, seek_pb);
+        if (search->mode == 'p') {
+            read_time = read_idx->pts;
+        }
         if (read_time == search->search_time){
             search->index_binary_offset = mid;
             return 1;
@@ -113,7 +121,7 @@ char get_frame_type(Index idx)
 Index * get_needed_frame(Index read_idx, SearchContext *search){
     char frame = get_frame_type(read_idx);
     Index *key_frame = NULL;
-    printf("\n------Frame-------\nDTS : %lld\nPTS : %lld\nType of frame : %c\nOffset : %lld\n------------------\n", read_idx.dts, read_idx.pts, frame, read_idx.pes_offset);
+    printf("\n------ %c-Frame -------\nTimecode : %02d:%02d:%02d:%02d\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(read_idx), read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames, read_idx.dts, read_idx.pts, read_idx.pes_offset);
     if (frame != 'I'){
         key_frame = av_malloc(10 * sizeof(Index));
         search->start_at = 0;
@@ -151,7 +159,7 @@ int main(int argc, char **argv)
     register_protocol(&file_protocol);
 
     if (url_fopen(search.pb, argv[2], URL_RDONLY) < 0) {
-        printf("error opening file %s\n", argv[1]);
+        printf("error opening file %s\n", argv[2]);
         return 1;
     }
     search.size = url_fsize(search.pb) - HEADER_SIZE;
@@ -165,21 +173,22 @@ int main(int argc, char **argv)
         return 1;
     }
 //    printf("Version : %d\n", get_byte(search.pb));
-    printf("Looking for frame with timecode : %c%c:%c%c:%c%c:%c%c\n",argv[3][0], argv[3][1], argv[3][2], argv[3][3], argv[3][4], argv[3][5], argv[3][6], argv[3][7]);
     int res = 0;
-    switch(argv[1][1]){
+    search.mode = argv[1][1];
+    switch(search.mode){
         case 't':
             if (argv[3][8] != '\0'){
                 printf("invalid time value\n\ttime_code must be input as follow : hhmmssff\n");
                 return 0;
             }
+            printf("Looking for frame with timecode : %c%c:%c%c:%c%c:%c%c\n",argv[3][0], argv[3][1], argv[3][2], argv[3][3], argv[3][4], argv[3][5], argv[3][6], argv[3][7]);
             res = search_frame_by_timecode(&search, &read_idx); 
             break;
         case 'p':
-            res = search_frame_by_pts(&search, &read_idx); 
+            res = search_frame_by_timecode(&search, &read_idx); 
             break;
         case 'd':
-            res = search_frame_by_dts(&search, &read_idx); 
+          //  res = search_frame_by_dts(&search, &read_idx); 
             break;
     }
     if (!res){
@@ -188,14 +197,14 @@ int main(int argc, char **argv)
     } 
 
     if (res == -1) {
-        printf("Video starts at %02d:%02d:%02d:%02d\n", read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames);
+        printf("Video starts at\ntimecode\t%02d:%02d:%02d:%02d\nPTS\t\t%lld\nDTS\t\t%lld\n", read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames, read_idx.pts, read_idx.dts);
         return 1;
     }
 
     key_frame = get_needed_frame(read_idx, &search);
     int i;
     for (i = search.key_frame_num; i >= 0; i--){
-        printf("\n------ %c-Frame -------\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(key_frame[i]),key_frame[i].dts, key_frame[i].pts, key_frame[i].pes_offset);
+        printf("\n------ %c-Frame -------\nTimecode : %02d:%02d:%02d:%02d\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(key_frame[i]), key_frame[i].timecode.hours, key_frame[i].timecode.minutes, key_frame[i].timecode.seconds, key_frame[i].timecode.frames, key_frame[i].dts, key_frame[i].pts, key_frame[i].pes_offset);
     }
     av_free(key_frame);
     url_fclose(search.pb);
