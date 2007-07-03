@@ -93,6 +93,25 @@ int find_previous_I_frame(Index *I_frame, Index read_idx, SearchContext search)
     return 0;
 }
 
+char get_frame_type(Index idx)
+{
+    char frame = 'U';
+    switch(idx.pic_type){
+        case 1 : 
+            frame = 'I';
+            break;
+        case 2 : 
+            frame = 'P';
+            break;
+        case 3 :
+            frame = 'B';
+            break;
+        default :
+            printf("type of frame unknown\n");
+    }
+    return frame;
+}
+
 int main(int argc, char **argv)
 {
     SearchContext search;
@@ -140,20 +159,7 @@ int main(int argc, char **argv)
     } else if (res == -1) {
         printf("Video starts at %02d:%02d:%02d:%02d\n", read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames);
     } else {
-        char frame = 'U';
-        switch(read_idx.pic_type){
-            case 1 : 
-                frame = 'I';
-                break;
-            case 2 : 
-                frame = 'P';
-                break;
-            case 3 :
-                frame = 'B';
-                break;
-            default :
-                printf("type of frame unknown\n");
-        }
+        char frame = get_frame_type(read_idx);
         if (frame != 'I'){
             I_frame = av_malloc(10 * sizeof(Index));
             count = find_previous_I_frame(I_frame, read_idx, search);
