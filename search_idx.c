@@ -69,7 +69,7 @@ int find_previous_I_frame(Index *I_frame, Index read_idx, SearchContext search)
     int key_frame_nb = 0;
     ByteIOContext *seek_pb = search.pb;
 
-    printf("-------     Previous P-Frames :    -------\n");
+//    printf("-------     Previous P-Frames :    -------\n");
     while (i >= 0){
         Index tmp = I_frame[key_frame_nb];
         url_fseek(seek_pb, i, SEEK_SET);
