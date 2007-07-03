@@ -136,12 +136,10 @@ Index * get_needed_frame(Index read_idx, SearchContext *search){
 int main(int argc, char **argv)
 {
     SearchContext search;
-    ByteIOContext pb1;
     ByteIOContext mpeg1;
     Index read_idx;
     Index *key_frame = NULL;
 
-    search.pb = &pb1;
     if (argc < 3) {
         printf("usage: search_idx <index file> <hhmmssff>\n");
         return 1;
