@@ -150,7 +150,7 @@ int main(int argc, char **argv)
     printf("Looking for frame with timecode : %c%c:%c%c:%c%c:%c%c\n",argv[2][0], argv[2][1], argv[2][2], argv[2][3], argv[2][4], argv[2][5], argv[2][6], argv[2][7]);
 
     int res = search_frame(&search, &read_idx); 
-    int count = -1;
+    int key_frame_num = -1;
     if (!res){
         printf("Frame could not be found, check input data\n");
         return 1;
@@ -176,11 +176,11 @@ int main(int argc, char **argv)
             } while (key_frame[0].pic_type == 3);
             search.start_at = 1;
         }
-    count = find_previous_key_frame(key_frame, read_idx, search);
+    key_frame_num = find_previous_key_frame(key_frame, read_idx, search);
     }
     int i;
     printf("\nList of frames needed to decode the seeked frame: \n");
-    for (i = count; i >= 0; i--){
+    for (i = key_frame_num; i >= 0; i--){
         printf("\n------ %c-Frame -------\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(key_frame[i]),key_frame[i].dts, key_frame[i].pts, key_frame[i].pes_offset);
     }
 
