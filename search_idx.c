@@ -128,6 +128,7 @@ Index * get_needed_frame(Index read_idx, SearchContext *search){
             } while (key_frame[0].pic_type == 3);
             search->start_at = 1;
         }
+        printf("\nList of frames needed to decode the seeked frame: \n");
         search->key_frame_num = find_previous_key_frame(key_frame, read_idx, *search);
     }
     return key_frame;
@@ -179,7 +180,6 @@ int main(int argc, char **argv)
 
     key_frame = get_needed_frame(read_idx, &search);
     int i;
-    printf("\nList of frames needed to decode the seeked frame: \n");
     for (i = search.key_frame_num; i >= 0; i--){
         printf("\n------ %c-Frame -------\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(key_frame[i]),key_frame[i].dts, key_frame[i].pts, key_frame[i].pes_offset);
     }
