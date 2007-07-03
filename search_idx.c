@@ -176,7 +176,7 @@ int main(int argc, char **argv)
             } while (key_frame[0].pic_type == 3);
             search.start_at = 1;
         }
-    key_frame_num = find_previous_key_frame(key_frame, read_idx, search);
+        key_frame_num = find_previous_key_frame(key_frame, read_idx, search);
     }
     int i;
     printf("\nList of frames needed to decode the seeked frame: \n");
