@@ -66,7 +66,7 @@ int search_frame(SearchContext *search, Index *read_idx)
 int find_previous_I_frame(Index *I_frame, Index read_idx, SearchContext search)
 {
     int i = search.index_binary_offset - INDEX_SIZE;
-    int key_frame_nb = 0;
+    int key_frame_nb = 1;
     ByteIOContext *seek_pb = search.pb;
 
     while (i >= 0){
@@ -152,24 +152,35 @@ int main(int argc, char **argv)
     int count = -1;
     if (!res){
         printf("Frame could not be found, check input data\n");
-    } else if (res == -1) {
+        return 1;
+    } 
+
+    if (res == -1) {
         printf("Video starts at %02d:%02d:%02d:%02d\n", read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames);
-    } else {
-        char frame = get_frame_type(read_idx);
-        printf("\n------Frame-------\nDTS : %lld\nPTS : %lld\nType of frame : %c\nOffset : %lld\n------------------\n", read_idx.dts, read_idx.pts, frame, read_idx.pes_offset);
-        if (frame != 'I'){
-            I_frame = av_malloc(10 * sizeof(Index));
-            count = find_previous_I_frame(I_frame, read_idx, search);
-        }
-        int i;
-        printf("\nList of needed frames : \n");
-        for (i = count; i >= 0; i-- ){
-            printf("\n------ %c-Frame -------\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(I_frame[i]),I_frame[i].dts, I_frame[i].pts, I_frame[i].pes_offset);
-        }
-        if (frame != 'P'){
-            // B-frames also need the next P or I frame to be decoded
-        }
+        return 1;
     }
+
+    char frame = get_frame_type(read_idx);
+    printf("\n------Frame-------\nDTS : %lld\nPTS : %lld\nType of frame : %c\nOffset : %lld\n------------------\n", read_idx.dts, read_idx.pts, frame, read_idx.pes_offset);
+    if (frame != 'I'){
+        I_frame = av_malloc(10 * sizeof(Index));
+        count = find_previous_I_frame(I_frame, read_idx, search);
+    }
+    if (frame == 'B'){
+        // B-frames also need the next P or I frame to be decoded
+        int pos = search.index_binary_offset;
+        do{
+            url_fseek(search.pb, pos, SEEK_SET);
+            compute_idx(&I_frame[0], search.pb);
+            pos += INDEX_SIZE; 
+        } while (I_frame[0].pic_type == 3);
+    }
+    int i;
+    printf("\nList of needed frames : \n");
+    for (i = count; i >= 0; i--){
+        printf("\n------ %c-Frame -------\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(I_frame[i]),I_frame[i].dts, I_frame[i].pts, I_frame[i].pes_offset);
+    }
+
     url_fclose(search.pb);
     return 0;
 }
