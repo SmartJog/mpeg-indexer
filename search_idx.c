@@ -11,6 +11,7 @@ typedef struct{
     ByteIOContext *pb;
     uint32_t search_time;
     int index_binary_offset;
+    uint8_t start_at;
 } SearchContext;
 
 static av_always_inline int compute_idx(Index *read_idx, ByteIOContext *seek_pb)
@@ -66,7 +67,7 @@ int search_frame(SearchContext *search, Index *read_idx)
 int find_previous_key_frame(Index *key_frame, Index read_idx, SearchContext search)
 {
     int i = search.index_binary_offset - INDEX_SIZE;
-    int key_frame_nb = 1;
+    int key_frame_nb = search.start_at;
     ByteIOContext *seek_pb = search.pb;
 
     while (i >= 0){
@@ -164,19 +165,21 @@ int main(int argc, char **argv)
     printf("\n------Frame-------\nDTS : %lld\nPTS : %lld\nType of frame : %c\nOffset : %lld\n------------------\n", read_idx.dts, read_idx.pts, frame, read_idx.pes_offset);
     if (frame != 'I'){
         key_frame = av_malloc(10 * sizeof(Index));
-        count = find_previous_key_frame(key_frame, read_idx, search);
-    }
-    if (frame == 'B'){
-        // B-frames also need the next P or I frame to be decoded
-        int pos = search.index_binary_offset;
-        do{
-            url_fseek(search.pb, pos, SEEK_SET);
-            compute_idx(&key_frame[0], search.pb);
-            pos += INDEX_SIZE; 
-        } while (key_frame[0].pic_type == 3);
+        search.start_at = 0;
+        if (frame == 'B'){
+            // B-frames need the P or I frame that follows to be decoded
+            int pos = search.index_binary_offset;
+            do{
+                url_fseek(search.pb, pos, SEEK_SET);
+                compute_idx(&key_frame[0], search.pb);
+                pos += INDEX_SIZE; 
+            } while (key_frame[0].pic_type == 3);
+            search.start_at = 1;
+        }
+    count = find_previous_key_frame(key_frame, read_idx, search);
     }
     int i;
-    printf("\nList of needed frames : \n");
+    printf("\nList of frames needed to decode the seeked frame: \n");
     for (i = count; i >= 0; i--){
         printf("\n------ %c-Frame -------\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(key_frame[i]),key_frame[i].dts, key_frame[i].pts, key_frame[i].pes_offset);
     }
