@@ -37,7 +37,8 @@ int search_frame(SearchContext *search, Index *read_idx)
     printf("%d indexes\n", nb_index);
     seek_pb = search->pb;
 
-    // Checks if the timecode we want is inferior to the first timecode in the file
+    // Checks if the timecode we want is inferior or equal to the first timecode in the file
+    url_fseek(seek_pb, HEADER_SIZE, SEEK_SET); // reads the first index in the file
     read_time = compute_idx(read_idx, seek_pb);
     if (read_time == search->search_time){
         return 1;
