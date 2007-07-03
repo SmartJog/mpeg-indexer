@@ -84,7 +84,7 @@ int find_previous_I_frame(Index *I_frame, Index read_idx, SearchContext search)
         }
         else if (tmp.pic_type == 1){
             I_frame[key_frame_nb] = tmp;
-            printf("------- Closest previous I-Frame : -------\n");
+            printf("\n------- Closest previous I-Frame : -------\n");
             printf("offset : %lld\tframe type : %d\n", I_frame[key_frame_nb].pes_offset, I_frame[key_frame_nb].pic_type);
             return key_frame_nb; 
         }
@@ -160,17 +160,16 @@ int main(int argc, char **argv)
         printf("Video starts at %02d:%02d:%02d:%02d\n", read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames);
     } else {
         char frame = get_frame_type(read_idx);
+        printf("\n------Frame-------\nDTS : %lld\nPTS : %lld\nType of frame : %c\nOffset : %lld\n------------------\n", read_idx.dts, read_idx.pts, frame, read_idx.pes_offset);
         if (frame != 'I'){
             I_frame = av_malloc(10 * sizeof(Index));
             count = find_previous_I_frame(I_frame, read_idx, search);
         }
         int i;
-        printf("\nList of frames to decode : \n");
-        for (i = 0; i <= count; i++ ){
+        printf("\nList of P-frames to decode : \n");
+        for (i = 0; i <= count -1; i++ ){
             printf("Key_Frames : %lld\n", I_frame[i].pes_offset);
         }
-        printf("\n------Frame-------\nDTS : %lld\nPTS : %lld\nType of frame : %c\n", read_idx.dts, read_idx.pts, frame);
-        printf("Offset : %lld\n", read_idx.pes_offset);
     }
     url_fclose(search.pb);
     return 0;
