@@ -12,6 +12,7 @@ typedef struct{
     uint32_t search_time;
     int index_binary_offset;
     uint8_t start_at;
+    int key_frame_num;
 } SearchContext;
 
 static av_always_inline int compute_idx(Index *read_idx, ByteIOContext *seek_pb)
@@ -109,12 +110,35 @@ char get_frame_type(Index idx)
     return frame;
 }
 
+Index * get_needed_frame(Index read_idx, SearchContext *search){
+    char frame = get_frame_type(read_idx);
+    Index *key_frame = NULL;
+    printf("\n------Frame-------\nDTS : %lld\nPTS : %lld\nType of frame : %c\nOffset : %lld\n------------------\n", read_idx.dts, read_idx.pts, frame, read_idx.pes_offset);
+    if (frame != 'I'){
+        key_frame = av_malloc(10 * sizeof(Index));
+        search->start_at = 0;
+        search->key_frame_num = -1;
+        if (frame == 'B'){
+            // B-frames need the P or I frame that follows to be decoded
+            int pos = search->index_binary_offset;
+            do{
+                url_fseek(search->pb, pos, SEEK_SET);
+                compute_idx(&key_frame[0], search->pb);
+                pos += INDEX_SIZE; 
+            } while (key_frame[0].pic_type == 3);
+            search->start_at = 1;
+        }
+        search->key_frame_num = find_previous_key_frame(key_frame, read_idx, *search);
+    }
+    return key_frame;
+}
 int main(int argc, char **argv)
 {
     SearchContext search;
     ByteIOContext pb1;
     ByteIOContext mpeg1, *mpeg = NULL;
-    Index read_idx, *key_frame = NULL;
+    Index read_idx;
+    Index *key_frame = NULL;
 
     search.pb = &pb1;
     if (argc < 3) {
@@ -150,7 +174,6 @@ int main(int argc, char **argv)
     printf("Looking for frame with timecode : %c%c:%c%c:%c%c:%c%c\n",argv[2][0], argv[2][1], argv[2][2], argv[2][3], argv[2][4], argv[2][5], argv[2][6], argv[2][7]);
 
     int res = search_frame(&search, &read_idx); 
-    int key_frame_num = -1;
     if (!res){
         printf("Frame could not be found, check input data\n");
         return 1;
@@ -161,26 +184,10 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    char frame = get_frame_type(read_idx);
-    printf("\n------Frame-------\nDTS : %lld\nPTS : %lld\nType of frame : %c\nOffset : %lld\n------------------\n", read_idx.dts, read_idx.pts, frame, read_idx.pes_offset);
-    if (frame != 'I'){
-        key_frame = av_malloc(10 * sizeof(Index));
-        search.start_at = 0;
-        if (frame == 'B'){
-            // B-frames need the P or I frame that follows to be decoded
-            int pos = search.index_binary_offset;
-            do{
-                url_fseek(search.pb, pos, SEEK_SET);
-                compute_idx(&key_frame[0], search.pb);
-                pos += INDEX_SIZE; 
-            } while (key_frame[0].pic_type == 3);
-            search.start_at = 1;
-        }
-        key_frame_num = find_previous_key_frame(key_frame, read_idx, search);
-    }
+    key_frame = get_needed_frame(read_idx, &search);
     int i;
     printf("\nList of frames needed to decode the seeked frame: \n");
-    for (i = key_frame_num; i >= 0; i--){
+    for (i = search.key_frame_num; i >= 0; i--){
         printf("\n------ %c-Frame -------\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(key_frame[i]),key_frame[i].dts, key_frame[i].pts, key_frame[i].pes_offset);
     }
     av_free(key_frame);
