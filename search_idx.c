@@ -28,7 +28,7 @@ static av_always_inline int compute_idx(Index *read_idx, ByteIOContext *seek_pb)
     return read_idx->timecode.hours * 1000000 + read_idx->timecode.minutes * 10000 + read_idx->timecode.seconds * 100 + read_idx->timecode.frames;
 }
 
-int search_frame(SearchContext *search, Index *read_idx)
+int search_frame_by_timecode(SearchContext *search, Index *read_idx)
 {
     int low = 0;
     int mid = search->size / 2;
@@ -140,34 +140,46 @@ int main(int argc, char **argv)
     Index read_idx;
     Index *key_frame = NULL;
 
-    if (argc < 3) {
-        printf("usage: search_idx <index file> <hhmmssff>\n");
+    if (argc < 4) {
+        printf("usage: search_idx <parameter type> <index file> <hhmmssff>\n");
+        printf("parameters types are :\n\t-t\ttimecode\n\t-p\tpts\n\t-d\tdts\n");
         return 1;
     }
 
     register_protocol(&file_protocol);
 
-    if (url_fopen(search.pb, argv[1], URL_RDONLY) < 0) {
+    if (url_fopen(search.pb, argv[2], URL_RDONLY) < 0) {
         printf("error opening file %s\n", argv[1]);
         return 1;
     }
     search.size = url_fsize(search.pb) - HEADER_SIZE;
-    if (argv[2][8] != '\0'){
-        printf("invalid time value\n\ttime must be input as follow : hhmmssff\n");
-        return 0;
-    }
-    search.search_time = atoi(argv[2]);
+
+    search.search_time = atoi(argv[3]);
 
     printf("Index size : %lld\n", search.size);
     int64_t magic = get_le64(search.pb);
     if (magic != 0x534A2D494E444558LL){
-        printf("%s is not an index file.\n", argv[1]);
+        printf("%s is not an index file.\n", argv[2]);
         return 1;
     }
 //    printf("Version : %d\n", get_byte(search.pb));
-    printf("Looking for frame with timecode : %c%c:%c%c:%c%c:%c%c\n",argv[2][0], argv[2][1], argv[2][2], argv[2][3], argv[2][4], argv[2][5], argv[2][6], argv[2][7]);
-
-    int res = search_frame(&search, &read_idx); 
+    printf("Looking for frame with timecode : %c%c:%c%c:%c%c:%c%c\n",argv[3][0], argv[3][1], argv[3][2], argv[3][3], argv[3][4], argv[3][5], argv[3][6], argv[3][7]);
+    int res = 0;
+    switch(argv[1][1]){
+        case 't':
+            if (argv[3][8] != '\0'){
+                printf("invalid time value\n\ttime_code must be input as follow : hhmmssff\n");
+                return 0;
+            }
+            res = search_frame_by_timecode(&search, &read_idx); 
+            break;
+        case 'p':
+            res = search_frame_by_pts(&search, &read_idx); 
+            break;
+        case 'd':
+            res = search_frame_by_dts(&search, &read_idx); 
+            break;
+    }
     if (!res){
         printf("Frame could not be found, check input data\n");
         return 1;
