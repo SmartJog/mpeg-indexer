@@ -69,14 +69,12 @@ int find_previous_I_frame(Index *I_frame, Index read_idx, SearchContext search)
     int key_frame_nb = 0;
     ByteIOContext *seek_pb = search.pb;
 
-//    printf("-------     Previous P-Frames :    -------\n");
     while (i >= 0){
         Index tmp = I_frame[key_frame_nb];
         url_fseek(seek_pb, i, SEEK_SET);
         compute_idx(&tmp, seek_pb);
         if (tmp.pic_type == 2){
             I_frame[key_frame_nb] = tmp;
-            //printf("offset : %lld\tframe type : %d\n", I_frame[key_frame_nb].pes_offset, I_frame[key_frame_nb].pic_type);
             key_frame_nb++;
             if (!(key_frame_nb % 10)){
                 I_frame = av_realloc(I_frame,(key_frame_nb + 10) *  sizeof(Index));
@@ -84,8 +82,6 @@ int find_previous_I_frame(Index *I_frame, Index read_idx, SearchContext search)
         }
         else if (tmp.pic_type == 1){
             I_frame[key_frame_nb] = tmp;
-            printf("\n------- Closest previous I-Frame : -------\n");
-            printf("offset : %lld\tframe type : %d\n", I_frame[key_frame_nb].pes_offset, I_frame[key_frame_nb].pic_type);
             return key_frame_nb; 
         }
         i -= INDEX_SIZE;
@@ -166,9 +162,12 @@ int main(int argc, char **argv)
             count = find_previous_I_frame(I_frame, read_idx, search);
         }
         int i;
-        printf("\nList of offset of needed P-frames : \n");
-        for (i = count - 1; i >= 0; i-- ){
-            printf("%lld\n", I_frame[i].pes_offset);
+        printf("\nList of needed frames : \n");
+        for (i = count; i >= 0; i-- ){
+            printf("\n------ %c-Frame -------\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(I_frame[i]),I_frame[i].dts, I_frame[i].pts, I_frame[i].pes_offset);
+        }
+        if (frame != 'P'){
+            // B-frames also need the next P or I frame to be decoded
         }
     }
     url_fclose(search.pb);
