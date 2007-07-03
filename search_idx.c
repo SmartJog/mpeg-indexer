@@ -183,7 +183,7 @@ int main(int argc, char **argv)
     for (i = key_frame_num; i >= 0; i--){
         printf("\n------ %c-Frame -------\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(key_frame[i]),key_frame[i].dts, key_frame[i].pts, key_frame[i].pes_offset);
     }
-
+    av_free(key_frame);
     url_fclose(search.pb);
     return 0;
 }
