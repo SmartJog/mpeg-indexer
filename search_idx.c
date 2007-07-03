@@ -136,7 +136,6 @@ Index * get_needed_frame(Index read_idx, SearchContext *search){
 int main(int argc, char **argv)
 {
     SearchContext search;
-    ByteIOContext mpeg1;
     Index read_idx;
     Index *key_frame = NULL;
 
@@ -146,10 +145,6 @@ int main(int argc, char **argv)
     }
 
     register_protocol(&file_protocol);
-    if (url_fopen(&mpeg1, argv[1], URL_RDONLY) < 0) {
-        printf("error opening file %s\n", argv[1]);
-        return 1;
-    }
 
     if (url_fopen(search.pb, argv[1], URL_RDONLY) < 0) {
         printf("error opening file %s\n", argv[1]);
