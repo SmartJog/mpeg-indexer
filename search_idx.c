@@ -66,11 +66,28 @@ int search_frame(SearchContext *search, Index *read_idx)
 int find_previous_I_frame(Index *I_frame, Index read_idx, SearchContext search)
 {
     int i = search.index_binary_offset - INDEX_SIZE;
+    int key_frame_nb = 0;
     ByteIOContext *seek_pb = search.pb;
 
-    while (i >= 0 && I_frame->pic_type != 1){
+    printf("-------     Previous P-Frames :    -------\n");
+    while (i >= 0){
+        Index tmp = I_frame[key_frame_nb];
         url_fseek(seek_pb, i, SEEK_SET);
-        compute_idx(I_frame, seek_pb);
+        compute_idx(&tmp, seek_pb);
+        if (tmp.pic_type == 2){
+            I_frame[key_frame_nb] = tmp;
+            //printf("offset : %lld\tframe type : %d\n", I_frame[key_frame_nb].pes_offset, I_frame[key_frame_nb].pic_type);
+            key_frame_nb++;
+            if (!(key_frame_nb % 10)){
+                I_frame = av_realloc(I_frame,(key_frame_nb + 10) *  sizeof(Index));
+            }
+        }
+        else if (tmp.pic_type == 1){
+            I_frame[key_frame_nb] = tmp;
+            printf("------- Closest previous I-Frame : -------\n");
+            printf("offset : %lld\tframe type : %d\n", I_frame[key_frame_nb].pes_offset, I_frame[key_frame_nb].pic_type);
+            return key_frame_nb; 
+        }
         i -= INDEX_SIZE;
     }
     return 0;
@@ -81,7 +98,7 @@ int main(int argc, char **argv)
     SearchContext search;
     ByteIOContext pb1;
     ByteIOContext mpeg1, *mpeg = NULL;
-    Index read_idx, I_frame;
+    Index read_idx, *I_frame = NULL;
 
     search.pb = &pb1;
     if (argc < 3) {
@@ -117,6 +134,7 @@ int main(int argc, char **argv)
     printf("Looking for frame with timecode : %c%c:%c%c:%c%c:%c%c\n",argv[2][0], argv[2][1], argv[2][2], argv[2][3], argv[2][4], argv[2][5], argv[2][6], argv[2][7]);
 
     int res = search_frame(&search, &read_idx); 
+    int count = -1;
     if (!res){
         printf("Frame could not be found, check input data\n");
     } else if (res == -1) {
@@ -137,9 +155,13 @@ int main(int argc, char **argv)
                 printf("type of frame unknown\n");
         }
         if (frame != 'I'){
-            find_previous_I_frame(&I_frame, read_idx, search);
-            printf("------- Closest previous I-Frame : -------\n");
-            printf("Offset : %lld\n", I_frame.pes_offset);
+            I_frame = av_malloc(10 * sizeof(Index));
+            count = find_previous_I_frame(I_frame, read_idx, search);
+        }
+        int i;
+        printf("\nList of frames to decode : \n");
+        for (i = 0; i <= count; i++ ){
+            printf("Key_Frames : %lld\n", I_frame[i].pes_offset);
         }
         printf("\n------Frame-------\nDTS : %lld\nPTS : %lld\nType of frame : %c\n", read_idx.dts, read_idx.pts, frame);
         printf("Offset : %lld\n", read_idx.pes_offset);
