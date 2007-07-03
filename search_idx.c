@@ -166,9 +166,9 @@ int main(int argc, char **argv)
             count = find_previous_I_frame(I_frame, read_idx, search);
         }
         int i;
-        printf("\nList of P-frames to decode : \n");
-        for (i = 0; i <= count -1; i++ ){
-            printf("Key_Frames : %lld\n", I_frame[i].pes_offset);
+        printf("\nList of offset of needed P-frames : \n");
+        for (i = count - 1; i >= 0; i-- ){
+            printf("%lld\n", I_frame[i].pes_offset);
         }
     }
     url_fclose(search.pb);
