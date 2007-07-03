@@ -182,8 +182,6 @@ int main(int argc, char **argv)
                 return 0;
             }
             printf("Looking for frame with timecode : %c%c:%c%c:%c%c:%c%c\n",argv[3][0], argv[3][1], argv[3][2], argv[3][3], argv[3][4], argv[3][5], argv[3][6], argv[3][7]);
-            res = search_frame(&search, &read_idx); 
-            break;
         case 'p':
             res = search_frame(&search, &read_idx); 
             break;
