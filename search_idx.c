@@ -127,6 +127,13 @@ int main(int argc, char **argv)
     }
 
     register_protocol(&file_protocol);
+    int i = 0;
+    for (i = 0; i < strlen(argv[3]); i++){
+        if (argv[3][i] < '0' || argv[3][i] > '9'){
+            printf("search value must be integer\n");
+            return 0;
+        }
+    }
 
     if (url_fopen(&search.pb, argv[2], URL_RDONLY) < 0) {
         printf("error opening file %s\n", argv[2]);
