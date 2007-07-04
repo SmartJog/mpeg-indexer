@@ -27,7 +27,7 @@ static av_always_inline int compute_idx(Index *read_idx, ByteIOContext *seek_pb)
     read_idx->timecode.seconds = get_byte(seek_pb);
     read_idx->timecode.minutes = get_byte(seek_pb);
     read_idx->timecode.hours = get_byte(seek_pb);
-    return read_idx->timecode.hours * 1000000 + read_idx->timecode.minutes * 10000 + read_idx->timecode.seconds * 100 + read_idx->timecode.frames;
+    return 0;
 }
 
 int search_frame(SearchContext *search, Index *read_idx)
@@ -35,7 +35,7 @@ int search_frame(SearchContext *search, Index *read_idx)
     int low = 0;
     int mid = search->size / 2;
     ByteIOContext *seek_pb = NULL;
-    uint32_t read_time; // used to store the timecode members in a single 32 bits integer to facilitate comparison 
+    uint64_t read_time = 0; // used to store the timecode members in a single 32 bits integer to facilitate comparison 
     int nb_index = (int)(search->size / INDEX_SIZE);
 
     printf("%d indexes\n", nb_index);
@@ -43,8 +43,11 @@ int search_frame(SearchContext *search, Index *read_idx)
 
     // Checks if the value we want is inferior or equal to the first value in the file
     url_fseek(seek_pb, HEADER_SIZE, SEEK_SET); // reads the first index in the file
-    read_time = compute_idx(read_idx, seek_pb);
-    if (search->mode == 'p') {                   // if the program was given a pts
+    compute_idx(read_idx, seek_pb);
+    if (search->mode == 't') {
+        read_time = read_idx->timecode.hours * 1000000 + read_idx->timecode.minutes * 10000 + read_idx->timecode.seconds * 100 + read_idx->timecode.frames;
+    }
+    else if (search->mode == 'p') {
         read_time = read_idx->pts;
     }
 
@@ -58,8 +61,12 @@ int search_frame(SearchContext *search, Index *read_idx)
         mid -= (mid % INDEX_SIZE) - HEADER_SIZE ;
 
         url_fseek(seek_pb, mid, SEEK_SET);
-        read_time = compute_idx(read_idx, seek_pb);
-        if (search->mode == 'p') {
+
+        compute_idx(read_idx, seek_pb);
+        if (search->mode == 't') {
+            read_time = read_idx->timecode.hours * 1000000 + read_idx->timecode.minutes * 10000 + read_idx->timecode.seconds * 100 + read_idx->timecode.frames;
+        }
+        else if (search->mode == 'p') {
             read_time = read_idx->pts;
         }
         if (read_time == search->search_time){
