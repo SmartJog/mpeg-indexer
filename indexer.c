@@ -172,6 +172,8 @@ static int calculate_pts_from_dts(StreamContext *stc)
             i++;
         while (j < stc->frame_num && stc->index[j].pic_type == 3)
             j++;
+        if (j == stc->frame_num - 2 && stc->index[j].pic_type != 3 && stc->index[j + 1].pic_type == 3)
+            stc->index[j].pts = stc->index[j + 1].dts + stc->frame_duration;
     }
     return 0;
 }
