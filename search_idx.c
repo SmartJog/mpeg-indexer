@@ -50,6 +50,9 @@ int search_frame(SearchContext *search, Index *read_idx)
     else if (search->mode == 'p') {
         read_time = read_idx->pts;
     }
+    else if (search->mode == 'd') {
+        read_time = read_idx->dts;
+    }
 
     if (read_time == search->search_time){
         return 1;
@@ -66,7 +69,7 @@ int search_frame(SearchContext *search, Index *read_idx)
         if (search->mode == 't') {
             read_time = read_idx->timecode.hours * 1000000 + read_idx->timecode.minutes * 10000 + read_idx->timecode.seconds * 100 + read_idx->timecode.frames;
         }
-        else if (search->mode == 'p') {
+        else {
             read_time = read_idx->pts;
         }
         if (read_time == search->search_time){
@@ -77,6 +80,24 @@ int search_frame(SearchContext *search, Index *read_idx)
         } else if (read_time < search->search_time) {
             low = mid + INDEX_SIZE;
         }
+    }
+    return 0;
+}
+
+int search_frame_dts(SearchContext *search, Index *read_idx)
+{
+    uint64_t i = search->index_binary_offset + INDEX_SIZE;
+    uint64_t tmp_pts = read_idx->pts;
+    ByteIOContext *seek_pb = &search->pb;
+    printf("search.size %lld\n", &search->size );
+    while (i < search->size) {
+        url_fseek(seek_pb, i, SEEK_SET);
+        compute_idx(read_idx, seek_pb);
+        printf("read_idx->dts %lld, tmp_pts %lld\n",read_idx->dts, tmp_pts );
+        if (read_idx->dts == tmp_pts) {
+            return 1;
+        }
+        i += INDEX_SIZE;
     }
     return 0;
 }
@@ -167,7 +188,13 @@ int main(int argc, char **argv)
             res = search_frame(&search, &read_idx); 
             break;
         case 'd':
-          //  res = search_frame_by_dts(&search, &read_idx); 
+            search.search_time = atoll(argv[3]);
+            res = search_frame(&search, &read_idx);
+            printf("res : %d, frame %c\n", res, get_frame_type(read_idx));
+            if (get_frame_type(read_idx) != 'B') {
+                res = search_frame_dts(&search, &read_idx); 
+                printf("res : %d\n", res);
+            }
             break;
     }
     if (!res){
