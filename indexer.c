@@ -104,7 +104,7 @@ static av_always_inline int idx_set_timestamps(StreamContext *stc, Index *idx, A
         if (idx->dts <= oldidx->dts) {
             idx->dts = oldidx->dts + stc->frame_duration;
             idx->pts = oldidx->dts + stc->frame_duration;
-//            printf("adjusting dts %lld -> %lld\n", stc->current_dts, idx->dts);
+            printf("adjusting dts %lld -> %lld\n", stc->current_dts, idx->dts);
         }
     }
     return 0;
@@ -251,14 +251,14 @@ int main(int argc, char *argv[])
             break;
 
         st = ic->streams[pkt.stream_index];
-        if (pkt.dts != AV_NOPTS_VALUE) {
-            stcontext.current_dts = pkt.dts;
-            stcontext.current_pts = pkt.pts;
-        }
         if (st->codec->codec_type == CODEC_TYPE_VIDEO) {
 //          records the offset of the packet in case the next picture start code begins in it and finishes in the next packet
             offset_t pkt_offset = pes_find_packet_start(&ic->pb, url_ftell(&ic->pb) - pkt.size, st->id);
 
+            if (pkt.dts != AV_NOPTS_VALUE) {
+                stcontext.current_dts = pkt.dts;
+                stcontext.current_pts = pkt.pts;
+            }
             if (stcontext.need_pic) {
                 memcpy(data_buf + 2 - stcontext.need_pic, pkt.data, stcontext.need_pic);
                 parse_pic_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf);
