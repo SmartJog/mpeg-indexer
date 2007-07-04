@@ -121,18 +121,9 @@ int find_previous_key_frame(Index *key_frame, Index read_idx, SearchContext sear
 char get_frame_type(Index idx)
 {
     char frame = 'U';
-    switch(idx.pic_type){
-        case 1 : 
-            frame = 'I';
-            break;
-        case 2 : 
-            frame = 'P';
-            break;
-        case 3 :
-            frame = 'B';
-            break;
-        default :
-            printf("type of frame unknown\n");
+    char frame_types[3] = {'I','P','B'};
+    if (idx.pic_type > 0 && idx.pic_type < 4) {
+        frame = frame_types[idx.pic_type - 1];
     }
     return frame;
 }
