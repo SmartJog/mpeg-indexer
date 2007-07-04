@@ -180,7 +180,6 @@ int main(int argc, char **argv)
         case 'd':
             search.search_time = atoll(argv[3]);
             res = search_frame(&search, &read_idx);
-            printf("res : %d, frame %c\n", res, get_frame_type(read_idx));
             if (read_idx.pts != read_idx.dts && read_idx.dts != search.search_time) {
                 res = search_frame_dts(&search, &read_idx); 
                 printf("res : %d\n", res);
