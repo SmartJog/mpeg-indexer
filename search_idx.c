@@ -172,7 +172,7 @@ int main(int argc, char **argv)
     char frame = get_frame_type(read_idx);
     printf("\n------ %c-Frame -------\nTimecode : %02d:%02d:%02d:%02d\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(read_idx), read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames, read_idx.dts, read_idx.pts, read_idx.pes_offset);
     if (frame != 'I'){
-        printf("\nKey frame needed to decode the seeked frame: \n");
+        printf("\nClosest I-frame to the seeked frame: \n");
         search.key_frame_num = find_previous_key_frame(&key_frame, read_idx, search);
         printf("\n------ %c-Frame -------\nTimecode : %02d:%02d:%02d:%02d\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(key_frame), key_frame.timecode.hours, key_frame.timecode.minutes, key_frame.timecode.seconds, key_frame.timecode.frames, key_frame.dts, key_frame.pts, key_frame.pes_offset);
     }
