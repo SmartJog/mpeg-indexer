@@ -40,20 +40,22 @@ extern AVCodec       mpegvideo_decoder;
 
 extern const uint8_t *ff_find_start_code(const uint8_t *p, const uint8_t *end, uint32_t *state);
 
+#define PES_SEARCH_LEN 48
+
 static av_always_inline offset_t pes_find_packet_start(ByteIOContext *pb, offset_t from, uint32_t id)
 {
     offset_t pos = url_ftell(pb);
-    uint8_t buffer[32];
+    uint8_t buffer[PES_SEARCH_LEN];
     uint32_t state = -1;
     offset_t res;
     int i;
 
-    url_fseek(pb, from - 32, SEEK_SET);
-    get_buffer(pb, buffer, 32);
-    for (i = 0; i < 32; i++) {
-        i = ff_find_start_code(buffer + i, buffer + 32, &state) - buffer - 1;
+    url_fseek(pb, from - PES_SEARCH_LEN, SEEK_SET);
+    get_buffer(pb, buffer, PES_SEARCH_LEN);
+    for (i = 0; i < PES_SEARCH_LEN; i++) {
+        i = ff_find_start_code(buffer + i, buffer + PES_SEARCH_LEN, &state) - buffer - 1;
         if (state == id) {
-            res = url_ftell(pb) - 32 + i - 3;
+            res = url_ftell(pb) - PES_SEARCH_LEN + i - 3;
             url_fseek(pb, pos, SEEK_SET);
             return res;
         }
