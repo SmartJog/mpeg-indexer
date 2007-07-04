@@ -8,7 +8,7 @@
 
 typedef struct{
     uint64_t size;
-    ByteIOContext *pb;
+    ByteIOContext pb;
     uint32_t search_time;
     int index_binary_offset;
     uint8_t start_at;
@@ -38,7 +38,7 @@ int search_frame(SearchContext *search, Index *read_idx)
     int nb_index = (int)(search->size / INDEX_SIZE);
 
     printf("%d indexes\n", nb_index);
-    seek_pb = search->pb;
+    seek_pb = &search->pb;
 
     // Checks if the value we want is inferior or equal to the first value in the file
     url_fseek(seek_pb, HEADER_SIZE, SEEK_SET); // reads the first index in the file
@@ -77,7 +77,7 @@ int find_previous_key_frame(Index *key_frame, Index read_idx, SearchContext sear
 {
     int i = search.index_binary_offset - INDEX_SIZE;
     int key_frame_nb = search.start_at;
-    ByteIOContext *seek_pb = search.pb;
+    ByteIOContext *seek_pb = &search.pb;
 
     while (i >= 0){
         Index tmp = key_frame[key_frame_nb];
@@ -130,8 +130,8 @@ Index * get_needed_frame(Index read_idx, SearchContext *search){
             // B-frames need the P or I frame that follows to be decoded
             int pos = search->index_binary_offset;
             do{
-                url_fseek(search->pb, pos, SEEK_SET);
-                compute_idx(&key_frame[0], search->pb);
+                url_fseek(&search->pb, pos, SEEK_SET);
+                compute_idx(&key_frame[0], &search->pb);
                 pos += INDEX_SIZE; 
             } while (key_frame[0].pic_type == 3);
             search->start_at = 1;
@@ -147,8 +147,8 @@ int main(int argc, char **argv)
     SearchContext search;
     Index read_idx;
     Index *key_frame = NULL;
-    ByteIOContext pb1;
-    search.pb = &pb1;
+//    ByteIOContext pb1;
+    //search.pb = &pb1;
 
     if (argc < 4) {
         printf("usage: search_idx <parameter type> <index file> <hhmmssff>\n");
@@ -158,21 +158,22 @@ int main(int argc, char **argv)
 
     register_protocol(&file_protocol);
 
-    if (url_fopen(search.pb, argv[2], URL_RDONLY) < 0) {
+    if (url_fopen(&search.pb, argv[2], URL_RDONLY) < 0) {
         printf("error opening file %s\n", argv[2]);
         return 1;
     }
-    search.size = url_fsize(search.pb) - HEADER_SIZE;
+    search.size = url_fsize(&search.pb) - HEADER_SIZE;
 
     search.search_time = atoi(argv[3]);
 
     printf("Index size : %lld\n", search.size);
-    int64_t magic = get_le64(search.pb);
+    int64_t magic = get_le64(&search.pb);
     if (magic != 0x534A2D494E444558LL){
         printf("%s is not an index file.\n", argv[2]);
         return 1;
     }
-//    printf("Version : %d\n", get_byte(search.pb));
+//    printf("Version : %d\n", get_byte(&search.pb));
+    search.key_frame_num =0;
     int res = 0;
     search.mode = argv[1][1];
     switch(search.mode){
@@ -205,6 +206,6 @@ int main(int argc, char **argv)
         printf("\n------ %c-Frame -------\nTimecode : %02d:%02d:%02d:%02d\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(key_frame[i]), key_frame[i].timecode.hours, key_frame[i].timecode.minutes, key_frame[i].timecode.seconds, key_frame[i].timecode.frames, key_frame[i].dts, key_frame[i].pts, key_frame[i].pes_offset);
     }
     av_free(key_frame);
-    url_fclose(search.pb);
+    url_fclose(&search.pb);
     return 0;
 }
