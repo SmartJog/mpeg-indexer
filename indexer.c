@@ -155,7 +155,6 @@ static int parse_pic_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
         idx->timecode.frames += 2;
         //FIXME readjust if frames > fps
     }
-    idx->pres_ref = (tc->gop_num << 16) + temp_ref;
 //  printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
     return 0;
 }

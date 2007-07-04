@@ -9,7 +9,6 @@ typedef struct {
 } Timecode;
 
 typedef struct {
-    uint32_t pres_ref;
     uint8_t pic_type;
     int64_t pts;
     int64_t dts;
