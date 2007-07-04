@@ -123,15 +123,8 @@ static int parse_gop_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
     return 0;
 }
 
-static int parse_pic_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
+static av_always_inline int adjust_timecode(Index *idx, TimeContext *tc)
 {
-    int temp_ref = (buf[0] << 2) | (buf[1] >> 6);
-    idx->pic_type = (buf[1] >> 3) & 0x07;
-
-//  calculation of timecode for current frame
-    idx->timecode = tc->gop_time;
-    idx->timecode.frames = tc->gop_time.frames + temp_ref;
-
     while (idx->timecode.frames >= tc->fps) {
         idx->timecode.seconds++;
         idx->timecode.frames -= tc->fps;
@@ -149,11 +142,24 @@ static int parse_pic_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
 
     while (idx->timecode.hours >= 24)
         idx->timecode.hours = 0; // what to do ?
+    return 0; 
+}
+
+static int parse_pic_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
+{
+    int temp_ref = (buf[0] << 2) | (buf[1] >> 6);
+    idx->pic_type = (buf[1] >> 3) & 0x07;
+
+//  calculation of timecode for current frame
+    idx->timecode = tc->gop_time;
+    idx->timecode.frames = tc->gop_time.frames + temp_ref;
+
+    adjust_timecode(idx, tc);
 
     if (tc->drop_mode && idx->timecode.minutes % 10 && idx->timecode.minutes != tc->gop_time.minutes) {
         printf ("dropping numbers 0 and 1 from timecode count\n");
         idx->timecode.frames += 2;
-        //FIXME readjust if frames > fps
+        adjust_timecode(idx, tc);
     }
 //  printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
     return 0;
