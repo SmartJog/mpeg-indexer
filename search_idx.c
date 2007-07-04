@@ -146,9 +146,18 @@ int main(int argc, char **argv)
     int res = 0;
     search.mode = argv[1][1];
     switch(search.mode){
+        int i; 
         case 't':
-            if (argv[3][8] != '\0'){
-                printf("invalid time value\n\ttime_code must be input as follow : hhmmssff\n");
+            i = 0;
+            while (i < 9 && argv[3][i] != '\0'){
+                i++;
+            }
+            if (i != 8){
+                printf("timecode is invalid\n\tmust be of the form : hhmmssff\n");
+                return 0;
+            }
+            if (i == 8 && argv[3][8] != '\0'){
+                printf("invalid time value\n\ttime_code must be of the form : hhmmssff\n");
                 return 0;
             }
             printf("Looking for frame with timecode : %c%c:%c%c:%c%c:%c%c\n",argv[3][0], argv[3][1], argv[3][2], argv[3][3], argv[3][4], argv[3][5], argv[3][6], argv[3][7]);
