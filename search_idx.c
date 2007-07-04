@@ -35,7 +35,7 @@ int search_frame(SearchContext *search, Index *read_idx)
     uint64_t low = 0;
     uint64_t mid = search->size / 2;
     ByteIOContext *seek_pb = NULL;
-    uint64_t read_time = 0; // used to store the timecode members in a single 32 bits integer to facilitate comparison 
+    uint64_t read_time = 0; // used to store the timecode members in a single 64 bits integer to facilitate comparison 
     int nb_index = (int)(search->size / INDEX_SIZE);
 
     printf("%d indexes\n", nb_index);
