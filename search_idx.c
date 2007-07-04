@@ -84,16 +84,13 @@ int search_frame(SearchContext *search, Index *read_idx)
 int find_previous_key_frame(Index *key_frame, Index read_idx, SearchContext search)
 {
     int i = search.index_binary_offset - INDEX_SIZE;
-    int key_frame_nb = search.start_at;
     ByteIOContext *seek_pb = &search.pb;
 
     while (i >= 0){
-        Index tmp = key_frame[key_frame_nb];
         url_fseek(seek_pb, i, SEEK_SET);
-        compute_idx(&tmp, seek_pb);
-        if (tmp.pic_type == 1){
-            key_frame[key_frame_nb] = tmp;
-            return key_frame_nb; 
+        compute_idx(key_frame, seek_pb);
+        if (key_frame->pic_type == 1){
+            return 1; 
         }
         i -= INDEX_SIZE;
     }
@@ -187,7 +184,7 @@ int main(int argc, char **argv)
     printf("\n------ %c-Frame -------\nTimecode : %02d:%02d:%02d:%02d\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(read_idx), read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames, read_idx.dts, read_idx.pts, read_idx.pes_offset);
     if (frame != 'I'){
         printf("\nClosest I-frame to the seeked frame: \n");
-        search.key_frame_num = find_previous_key_frame(&key_frame, read_idx, search);
+        find_previous_key_frame(&key_frame, read_idx, search);
         printf("\n------ %c-Frame -------\nTimecode : %02d:%02d:%02d:%02d\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(key_frame), key_frame.timecode.hours, key_frame.timecode.minutes, key_frame.timecode.seconds, key_frame.timecode.frames, key_frame.dts, key_frame.pts, key_frame.pes_offset);
     }
 
