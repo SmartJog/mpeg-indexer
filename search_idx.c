@@ -133,8 +133,6 @@ int main(int argc, char **argv)
     }
     search.size = url_fsize(&search.pb) - HEADER_SIZE;
 
-    search.search_time = atoll(argv[3]);
-
     printf("Index size : %lld\n", search.size);
     int64_t magic = get_le64(&search.pb);
     if (magic != 0x534A2D494E444558LL){
@@ -162,6 +160,7 @@ int main(int argc, char **argv)
             }
             printf("Looking for frame with timecode : %c%c:%c%c:%c%c:%c%c\n",argv[3][0], argv[3][1], argv[3][2], argv[3][3], argv[3][4], argv[3][5], argv[3][6], argv[3][7]);
         case 'p':
+            search.search_time = atoll(argv[3]);
             res = search_frame(&search, &read_idx); 
             break;
         case 'd':
