@@ -17,6 +17,11 @@ typedef struct{
     char mode;
 } SearchContext;
 
+typedef struct{
+    uint64_t index_num;
+    Index *idxL;
+} IndexContext;
+
 static av_always_inline int compute_idx(Index *read_idx, ByteIOContext *seek_pb)
 {
     read_idx->pts = get_le64(seek_pb);
@@ -28,6 +33,32 @@ static av_always_inline int compute_idx(Index *read_idx, ByteIOContext *seek_pb)
     read_idx->timecode.minutes = get_byte(seek_pb);
     read_idx->timecode.hours = get_byte(seek_pb);
     return 0;
+}
+
+static IndexContext* load_index(char *filename, SearchContext *search)
+{
+    IndexContext *idxctx;
+    register_protocol(&file_protocol);
+    
+    if (url_fopen(&search->pb, filename, URL_RDONLY) < 0) {
+        printf("error opening file %s\n", filename);
+        return NULL;
+    }
+    search->size = url_fsize(&search->pb) - HEADER_SIZE;
+    idxctx->index_num = (int)(search->size / INDEX_SIZE);
+    idxctx->idxL = av_malloc(idxctx->index_num * sizeof(Index)); 
+
+    printf("Index size : %lld\n", search->size);
+    int64_t magic = get_le64(&search->pb);
+    if (magic != 0x534A2D494E444558LL){
+        printf("%s is not an index file.\n", filename);
+        return NULL;
+    }
+
+    for(int i = 0; i < idxctx->index_num; i++){
+        compute_idx(&idxctx->idxL[i], &search->pb);
+    }
+    return idxctx;
 }
 
 int search_frame(SearchContext *search, Index *read_idx)
@@ -132,6 +163,7 @@ char get_frame_type(Index idx)
 int main(int argc, char **argv)
 {
     SearchContext search;
+    IndexContext *idxctx;
     Index read_idx;
     Index key_frame;
 
@@ -141,7 +173,6 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    register_protocol(&file_protocol);
     int len = strlen(argv[3]);
     for (int i = 0; i < len; i++){
         if (argv[3][i] < '0' || argv[3][i] > '9'){
@@ -149,18 +180,11 @@ int main(int argc, char **argv)
             return 0;
         }
     }
-
-    if (url_fopen(&search.pb, argv[2], URL_RDONLY) < 0) {
-        printf("error opening file %s\n", argv[2]);
-        return 1;
-    }
-    search.size = url_fsize(&search.pb) - HEADER_SIZE;
-
-    printf("Index size : %lld\n", search.size);
-    int64_t magic = get_le64(&search.pb);
-    if (magic != 0x534A2D494E444558LL){
-        printf("%s is not an index file.\n", argv[2]);
-        return 1;
+    
+    idxctx = load_index(argv[2], &search);
+    if (!idxctx) {
+        printf("Index file could not be loaded\n");
+        return 0;
     }
 //    printf("Version : %d\n", get_byte(&search.pb));
     search.key_frame_num =0;
