@@ -182,7 +182,6 @@ int main(int argc, char **argv)
             res = search_frame(&search, &read_idx);
             if (read_idx.pts != read_idx.dts && read_idx.dts != search.search_time) {
                 res = search_frame_dts(&search, &read_idx); 
-                printf("res : %d\n", res);
             }
             break;
     }
