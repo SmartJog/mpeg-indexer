@@ -9,7 +9,7 @@
 typedef struct{
     uint64_t size;
     ByteIOContext pb;
-    uint32_t search_time;
+    uint64_t search_time;
     int index_binary_offset;
     uint8_t start_at;
     int key_frame_num;
@@ -164,7 +164,7 @@ int main(int argc, char **argv)
     }
     search.size = url_fsize(&search.pb) - HEADER_SIZE;
 
-    search.search_time = atoi(argv[3]);
+    search.search_time = atoll(argv[3]);
 
     printf("Index size : %lld\n", search.size);
     int64_t magic = get_le64(&search.pb);
