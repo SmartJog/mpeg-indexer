@@ -36,6 +36,7 @@ static int idx_sort_by_pts(const void *idx1, const void *idx2)
 }
 
 extern AVInputFormat mpegps_demuxer;
+extern AVCodec       mpegvideo_decoder;
 
 extern const uint8_t *ff_find_start_code(const uint8_t *p, const uint8_t *end, uint32_t *state);
 
@@ -159,7 +160,7 @@ static int parse_pic_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
 
 static int calculate_pts_from_dts(StreamContext *stc)
 {
-    int i = 0, j = 1; 
+    int i = 0, j = 1;
     while (i < stc->frame_num && j < stc->frame_num){
         if (stc->index[i].pic_type != 3 && stc->index[j].pic_type != 3){
             stc->index[i].pts = stc->index[j].dts;
@@ -243,7 +244,7 @@ int main(int argc, char *argv[])
 
     stcontext.index = av_malloc(1000 * sizeof(Index));
     printf("creating index\n");
-    while (1) { 
+    while (1) {
         ret = av_read_packet(ic, &pkt);
         if (ret < 0)
             break;
