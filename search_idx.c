@@ -32,6 +32,7 @@ static av_always_inline int compute_idx(Index *read_idx, ByteIOContext *seek_pb)
 
 int search_frame(SearchContext *search, Index *read_idx)
 {
+    uint64_t high = search->size;
     uint64_t low = 0;
     uint64_t mid = search->size / 2;
     ByteIOContext *seek_pb = NULL;
@@ -59,8 +60,8 @@ int search_frame(SearchContext *search, Index *read_idx)
     } else if (read_time > search->search_time) {
         return -1;
     }
-    while (low <= search->size) {
-        mid = (int)((search->size + low) / 2);
+    while (low <= high) {
+        mid = (int)((high + low) / 2);
         mid -= (mid % INDEX_SIZE) - HEADER_SIZE ;
 
         url_fseek(seek_pb, mid, SEEK_SET);
@@ -76,7 +77,7 @@ int search_frame(SearchContext *search, Index *read_idx)
             search->index_binary_offset = mid;
             return 1;
         } else if (read_time > search->search_time) {
-            search->size = mid - INDEX_SIZE;
+            high = mid - INDEX_SIZE;
         } else if (read_time < search->search_time) {
             low = mid + INDEX_SIZE;
         }
