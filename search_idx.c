@@ -93,7 +93,7 @@ int search_frame_dts(SearchContext *search, Index *read_idx)
     while (i < search->size) {
         url_fseek(seek_pb, i, SEEK_SET);
         compute_idx(read_idx, seek_pb);
-        printf("read_idx->dts %lld, tmp_pts %lld\n",read_idx->dts, tmp_pts );
+        // looks for the frame that has the dts we're looking for, it's located after the frame with that value as pts
         if (read_idx->dts == tmp_pts) {
             search->index_binary_offset = i; 
             return 1;
@@ -134,8 +134,6 @@ int main(int argc, char **argv)
     SearchContext search;
     Index read_idx;
     Index key_frame;
-//    ByteIOContext pb1;
-    //search.pb = &pb1;
 
     if (argc < 4) {
         printf("usage: search_idx <parameter type> <index file> <hhmmssff>\n");
