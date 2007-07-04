@@ -83,14 +83,7 @@ int find_previous_key_frame(Index *key_frame, Index read_idx, SearchContext sear
         Index tmp = key_frame[key_frame_nb];
         url_fseek(seek_pb, i, SEEK_SET);
         compute_idx(&tmp, seek_pb);
-        if (tmp.pic_type == 2){
-            key_frame[key_frame_nb] = tmp;
-            key_frame_nb++;
-            if (!(key_frame_nb % 10)){
-                key_frame = av_realloc(key_frame,(key_frame_nb + 10) *  sizeof(Index));
-            }
-        }
-        else if (tmp.pic_type == 1){
+        if (tmp.pic_type == 1){
             key_frame[key_frame_nb] = tmp;
             return key_frame_nb; 
         }
@@ -118,35 +111,11 @@ char get_frame_type(Index idx)
     return frame;
 }
 
-Index * get_needed_frame(Index read_idx, SearchContext *search){
-    char frame = get_frame_type(read_idx);
-    Index *key_frame = NULL;
-    printf("\n------ %c-Frame -------\nTimecode : %02d:%02d:%02d:%02d\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(read_idx), read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames, read_idx.dts, read_idx.pts, read_idx.pes_offset);
-    if (frame != 'I'){
-        key_frame = av_malloc(10 * sizeof(Index));
-        search->start_at = 0;
-        search->key_frame_num = -1;
-        if (frame == 'B'){
-            // B-frames need the P or I frame that follows to be decoded
-            int pos = search->index_binary_offset;
-            do{
-                url_fseek(&search->pb, pos, SEEK_SET);
-                compute_idx(&key_frame[0], &search->pb);
-                pos += INDEX_SIZE; 
-            } while (key_frame[0].pic_type == 3);
-            search->start_at = 1;
-        }
-        printf("\nList of frames needed to decode the seeked frame: \n");
-        search->key_frame_num = find_previous_key_frame(key_frame, read_idx, *search);
-    }
-    return key_frame;
-}
-
 int main(int argc, char **argv)
 {
     SearchContext search;
     Index read_idx;
-    Index *key_frame = NULL;
+    Index key_frame;
 //    ByteIOContext pb1;
     //search.pb = &pb1;
 
@@ -200,12 +169,14 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    key_frame = get_needed_frame(read_idx, &search);
-    int i;
-    for (i = search.key_frame_num; i >= 0; i--){
-        printf("\n------ %c-Frame -------\nTimecode : %02d:%02d:%02d:%02d\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(key_frame[i]), key_frame[i].timecode.hours, key_frame[i].timecode.minutes, key_frame[i].timecode.seconds, key_frame[i].timecode.frames, key_frame[i].dts, key_frame[i].pts, key_frame[i].pes_offset);
+    char frame = get_frame_type(read_idx);
+    printf("\n------ %c-Frame -------\nTimecode : %02d:%02d:%02d:%02d\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(read_idx), read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames, read_idx.dts, read_idx.pts, read_idx.pes_offset);
+    if (frame != 'I'){
+        printf("\nKey frame needed to decode the seeked frame: \n");
+        search.key_frame_num = find_previous_key_frame(&key_frame, read_idx, search);
+        printf("\n------ %c-Frame -------\nTimecode : %02d:%02d:%02d:%02d\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(key_frame), key_frame.timecode.hours, key_frame.timecode.minutes, key_frame.timecode.seconds, key_frame.timecode.frames, key_frame.dts, key_frame.pts, key_frame.pes_offset);
     }
-    av_free(key_frame);
+
     url_fclose(&search.pb);
     return 0;
 }
