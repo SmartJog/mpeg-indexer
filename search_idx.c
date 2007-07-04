@@ -95,6 +95,7 @@ int search_frame_dts(SearchContext *search, Index *read_idx)
         compute_idx(read_idx, seek_pb);
         printf("read_idx->dts %lld, tmp_pts %lld\n",read_idx->dts, tmp_pts );
         if (read_idx->dts == tmp_pts) {
+            search->index_binary_offset = i; 
             return 1;
         }
         i += INDEX_SIZE;
@@ -182,7 +183,7 @@ int main(int argc, char **argv)
             search.search_time = atoll(argv[3]);
             res = search_frame(&search, &read_idx);
             printf("res : %d, frame %c\n", res, get_frame_type(read_idx));
-            if (get_frame_type(read_idx) != 'B') {
+            if (read_idx.pts != read_idx.dts && read_idx.dts != search.search_time) {
                 res = search_frame_dts(&search, &read_idx); 
                 printf("res : %d\n", res);
             }
