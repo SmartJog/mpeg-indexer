@@ -11,7 +11,7 @@ typedef struct{
     uint64_t size;
     ByteIOContext pb;
     uint64_t search_time;
-    int index_binary_offset;
+    uint64_t index_binary_offset;
     uint8_t start_at;
     int key_frame_num;
     char mode;
@@ -32,8 +32,8 @@ static av_always_inline int compute_idx(Index *read_idx, ByteIOContext *seek_pb)
 
 int search_frame(SearchContext *search, Index *read_idx)
 {
-    int low = 0;
-    int mid = search->size / 2;
+    uint64_t low = 0;
+    uint64_t mid = search->size / 2;
     ByteIOContext *seek_pb = NULL;
     uint64_t read_time = 0; // used to store the timecode members in a single 32 bits integer to facilitate comparison 
     int nb_index = (int)(search->size / INDEX_SIZE);
@@ -89,7 +89,6 @@ int search_frame_dts(SearchContext *search, Index *read_idx)
     uint64_t i = search->index_binary_offset + INDEX_SIZE;
     uint64_t tmp_pts = read_idx->pts;
     ByteIOContext *seek_pb = &search->pb;
-    printf("search.size %lld\n", &search->size );
     while (i < search->size) {
         url_fseek(seek_pb, i, SEEK_SET);
         compute_idx(read_idx, seek_pb);
