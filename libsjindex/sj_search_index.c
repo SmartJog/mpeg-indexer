@@ -62,14 +62,14 @@ int sj_index_unload(SJ_IndexContext *sj_ic)
 
 static uint64_t get_search_value(Index idx, SJ_IndexContext sj_ic)
 {
-    if (sj_ic.mode == SJ_INDEX_TIMECODE) {
+    if (sj_ic.mode == SJ_INDEX_TIMECODE_SEARCH) {
         return idx.timecode.hours * 1000000 + idx.timecode.minutes * 10000 + idx.timecode.seconds * 100 + idx.timecode.frames;
         //return (idx.timecode.hours << 24) | (idx.timecode.minutes << 16) | (idx.timecode.seconds << 8) | idx.timecode.frames;
     }
-    else if (sj_ic.mode == SJ_INDEX_PTS) {
+    else if (sj_ic.mode == SJ_INDEX_PTS_SEARCH) {
         return idx.pts;
     }
-    else if (sj_ic.mode == SJ_INDEX_DTS) {
+    else if (sj_ic.mode == SJ_INDEX_DTS_SEARCH) {
         return idx.dts;
     }
     return 0;
@@ -94,7 +94,7 @@ static int search_frame(SJ_IndexContext *sj_ic, Index *read_idx)
     }
     while (low <= high) {
         mid = (int)((high + low) / 2);
-        if (sj_ic->mode == SJ_INDEX_TIMECODE) {
+        if (sj_ic->mode == SJ_INDEX_TIMECODE_SEARCH) {
             read_time = sj_ic->indexes[mid].timecode.hours * 10000000 + sj_ic->indexes[mid].timecode.minutes * 10000 +  sj_ic->indexes[mid].timecode.seconds * 100 + sj_ic->indexes[mid].timecode.frames;
 //            read_time = sj_ic->indexes[mid].timecode.hours << 24 & sj_ic->indexes[mid].timecode.minutes << 16 & sj_ic->indexes[mid].timecode.seconds << 8 & sj_ic->indexes[mid].timecode.frames;
         }
@@ -161,7 +161,7 @@ int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_val, Index *idx, Ind
     sj_ic->mode = flags;
     sj_ic->search_time = search_val;
     res = search_frame(sj_ic, idx); 
-    if (flags == SJ_INDEX_DTS){
+    if (flags == SJ_INDEX_DTS_SEARCH){
         if (idx->pts != idx->dts && idx->dts != sj_ic->search_time) {
             res = search_frame_dts(sj_ic, idx); 
         }

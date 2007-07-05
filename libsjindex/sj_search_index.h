@@ -1,9 +1,9 @@
 #ifndef INDEX_SEARCH
 #define INDEX_SEARCH
 
-#define SJ_INDEX_TIMECODE 1
-#define SJ_INDEX_PTS 2
-#define SJ_INDEX_DTS 4
+#define SJ_INDEX_TIMECODE_SEARCH 1
+#define SJ_INDEX_PTS_SEARCH 2
+#define SJ_INDEX_DTS_SEARCH 4
 typedef struct{
     uint64_t size;
     uint8_t version;
