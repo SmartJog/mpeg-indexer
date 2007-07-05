@@ -15,12 +15,9 @@ typedef struct{
     uint8_t start_at;
     int key_frame_num;
     char mode;
-} SearchContext;
-
-typedef struct{
     uint64_t index_num;
-    Index *idxL;
-} IndexContext;
+    Index *indexes;
+} SearchContext;
 
 static av_always_inline int compute_idx(Index *read_idx, ByteIOContext *seek_pb)
 {
@@ -35,57 +32,57 @@ static av_always_inline int compute_idx(Index *read_idx, ByteIOContext *seek_pb)
     return 0;
 }
 
-static IndexContext* load_index(char *filename, SearchContext *search)
+static int load_index(char *filename, SearchContext *search)
 {
-    IndexContext *idxctx;
     register_protocol(&file_protocol);
     
     if (url_fopen(&search->pb, filename, URL_RDONLY) < 0) {
-        printf("error opening file %s\n", filename);
-        return NULL;
+        return -1;
     }
     search->size = url_fsize(&search->pb) - HEADER_SIZE;
-    idxctx->index_num = (int)(search->size / INDEX_SIZE);
-    idxctx->idxL = av_malloc(idxctx->index_num * sizeof(Index)); 
+    search->index_num = (int)(search->size / INDEX_SIZE);
+    search->indexes = av_malloc(search->index_num * sizeof(Index)); 
 
     printf("Index size : %lld\n", search->size);
     int64_t magic = get_le64(&search->pb);
     if (magic != 0x534A2D494E444558LL){
-        printf("%s is not an index file.\n", filename);
-        return NULL;
+        return -2;
+    }
+    if (!search->index_num){
+        return -4;
     }
 
-    for(int i = 0; i < idxctx->index_num; i++){
-        compute_idx(&idxctx->idxL[i], &search->pb);
+    for(int i = 0; i < search->index_num; i++){
+        compute_idx(&search->indexes[i], &search->pb);
     }
-    return idxctx;
+    return 0;
 }
 
-int search_frame(SearchContext *search, Index *read_idx)
+static uint64_t get_search_value(Index idx, SearchContext search)
 {
-    uint64_t high = search->size;
-    uint64_t low = 0;
-    uint64_t mid = search->size / 2;
-    ByteIOContext *seek_pb = NULL;
-    uint64_t read_time = 0; // used to store the timecode members in a single 64 bits integer to facilitate comparison 
-    int nb_index = (int)(search->size / INDEX_SIZE);
+    if (search.mode == 't') {
+        return idx.timecode.hours * 1000000 + idx.timecode.minutes * 10000 + idx.timecode.seconds * 100 + idx.timecode.frames;
+    }
+    else if (search.mode == 'p') {
+        return idx.pts;
+    }
+    else if (search.mode == 'd') {
+        return idx.dts;
+    }
+    return 0;
+}
 
-    printf("%d indexes\n", nb_index);
-    seek_pb = &search->pb;
+static int search_frame(SearchContext *search, Index *read_idx)
+{
+    uint64_t high = search->index_num;
+    uint64_t low = 0;
+    uint64_t mid = high / 2;
+
+    uint64_t read_time = 0; // used to store the timecode members in a single 64 bits integer to facilitate comparison 
 
     // Checks if the value we want is inferior or equal to the first value in the file
-    url_fseek(seek_pb, HEADER_SIZE, SEEK_SET); // reads the first index in the file
-    compute_idx(read_idx, seek_pb);
-    if (search->mode == 't') {
-        read_time = read_idx->timecode.hours * 1000000 + read_idx->timecode.minutes * 10000 + read_idx->timecode.seconds * 100 + read_idx->timecode.frames;
-    }
-    else if (search->mode == 'p') {
-        read_time = read_idx->pts;
-    }
-    else if (search->mode == 'd') {
-        read_time = read_idx->dts;
-    }
-
+    read_time = get_search_value(search->indexes[0], *search);
+   
     if (read_time == search->search_time){
         return 1;
     } else if (read_time > search->search_time) {
@@ -95,9 +92,6 @@ int search_frame(SearchContext *search, Index *read_idx)
         mid = (int)((high + low) / 2);
         mid -= (mid % INDEX_SIZE) - HEADER_SIZE ;
 
-        url_fseek(seek_pb, mid, SEEK_SET);
-
-        compute_idx(read_idx, seek_pb);
         if (search->mode == 't') {
             read_time = read_idx->timecode.hours * 1000000 + read_idx->timecode.minutes * 10000 + read_idx->timecode.seconds * 100 + read_idx->timecode.frames;
         }
@@ -163,7 +157,6 @@ char get_frame_type(Index idx)
 int main(int argc, char **argv)
 {
     SearchContext search;
-    IndexContext *idxctx;
     Index read_idx;
     Index key_frame;
 
@@ -181,9 +174,19 @@ int main(int argc, char **argv)
         }
     }
     
-    idxctx = load_index(argv[2], &search);
-    if (!idxctx) {
-        printf("Index file could not be loaded\n");
+    int load_res = load_index(argv[2], &search);
+    if (load_res == -1) {
+        printf("File could not be open\n");
+        return 0;
+    }
+
+    if (load_res == -2) {
+        printf("File is not a index file\n");
+        return 0;
+    }
+    
+    if (load_res == -4) {
+        printf("Index is empty\n");
         return 0;
     }
 //    printf("Version : %d\n", get_byte(&search.pb));
