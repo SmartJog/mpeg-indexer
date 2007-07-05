@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "indexer.h"
+#include "search_index.h"
 
 static av_always_inline int read_index(Index *read_idx, ByteIOContext *seek_pb)
 {
