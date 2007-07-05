@@ -3,7 +3,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "indexer.h"
+#include "libsjindex/indexer.h"
 
 #define GOP_START_CODE            0x000001b8
 #define PICTURE_START_CODE        0x00000100

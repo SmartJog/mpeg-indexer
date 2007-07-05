@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-Wall -O3 -fomit-frame-pointer -std=c99
-LDFLAGS=-lavformat -lavcodec -lavutil -lm
+LDFLAGS=-lavformat -lavcodec -lavutil -lm -L./libsjindex -lsjindex
 DESTDIR = /
 all:		indexer indexparse search
 
