@@ -4,25 +4,6 @@
 
 #include "indexer.h"
 
-#ifndef INDEX_SEARCH
-#define INDEX_SEARCH
-#define INDEX_SIZE 29
-#define HEADER_SIZE 9 
-
-#define SJ_INDEX_TIMECODE 1
-#define SJ_INDEX_PTS 2
-#define SJ_INDEX_DTS 4
-typedef struct{
-    uint64_t size;
-    uint8_t version;
-    ByteIOContext pb;
-    uint64_t search_time;
-    uint64_t index_pos;
-    uint64_t mode;
-    uint64_t index_num;
-    Index *indexes;
-} SJ_IndexContext;
-
 static av_always_inline int read_index(Index *read_idx, ByteIOContext *seek_pb)
 {
     read_idx->pts = get_le64(seek_pb);
@@ -161,7 +142,7 @@ static int find_previous_key_frame(Index *key_frame, SJ_IndexContext sj_ic)
     return 0;
 }
 
-char get_frame_type(Index idx)
+char sj_index_get_frame_type(Index idx)
 {
     char frame = 'U';
     char frame_types[3] = {'I','P','B'};
@@ -182,12 +163,11 @@ int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_val, Index *idx, Ind
             res = search_frame_dts(sj_ic, idx); 
         }
     }
-    char frame = get_frame_type(*idx);
+    char frame = sj_index_get_frame_type(*idx);
     if (frame != 'I'){
         find_previous_key_frame(key_frame, *sj_ic);
     }
 
     return res; // res = 0 if frame wasn't found, -1 if the first value in the index is greater than the one we're looking for
 }
-#endif
 
