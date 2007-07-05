@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "indexer.h"
-#include "search_index.h"
+#include "libsjindex/sj_search_index.h"
 
 int main(int argc, char **argv)
 {
