@@ -34,7 +34,7 @@ static av_always_inline int read_index(Index *read_idx, ByteIOContext *seek_pb)
     return 0;
 }
 
-static int sj_index_load(char *filename, SJ_IndexContext *sj_ic)
+int sj_index_load(char *filename, SJ_IndexContext *sj_ic)
 {
     register_protocol(&file_protocol);
     
