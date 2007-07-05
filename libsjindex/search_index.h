@@ -9,7 +9,6 @@
 typedef struct{
     uint64_t size;
     uint8_t version;
-    ByteIOContext pb;
     uint64_t search_time;
     uint64_t index_pos;
     uint64_t mode;
