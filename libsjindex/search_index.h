@@ -1,7 +1,5 @@
 #ifndef INDEX_SEARCH
 #define INDEX_SEARCH
-#define INDEX_SIZE 29
-#define HEADER_SIZE 9 
 
 #define SJ_INDEX_TIMECODE 1
 #define SJ_INDEX_PTS 2

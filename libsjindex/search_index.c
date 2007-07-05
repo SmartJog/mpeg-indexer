@@ -1,10 +1,11 @@
 #include <ffmpeg/avformat.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "indexer.h"
 #include "search_index.h"
 
+#define INDEX_SIZE 29
+#define HEADER_SIZE 9 
 static av_always_inline int read_index(Index *read_idx, ByteIOContext *seek_pb)
 {
     read_idx->pts = get_le64(seek_pb);
