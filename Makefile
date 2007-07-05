@@ -1,5 +1,6 @@
 CC=gcc
-CFLAGS=-Wall -O3 -fomit-frame-pointer -std=c99
+#CFLAGS=-Wall -O3 -fomit-frame-pointer -std=c99
+CFLAGS=-Wall -ggdb3 -std=c99
 LDFLAGS=-lavformat -lavcodec -lavutil -lm
 DESTDIR = /
 all:		indexer indexparse search_idx
