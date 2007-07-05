@@ -19,7 +19,7 @@ typedef struct{
     Index *indexes;
 } SearchContext;
 
-static av_always_inline int compute_idx(Index *read_idx, ByteIOContext *seek_pb)
+static av_always_inline int read_index(Index *read_idx, ByteIOContext *seek_pb)
 {
     read_idx->pts = get_le64(seek_pb);
     read_idx->dts = get_le64(seek_pb);
@@ -53,7 +53,7 @@ static int load_index(char *filename, SearchContext *search)
     }
 
     for(int i = 0; i < search->index_num; i++){
-        compute_idx(&search->indexes[i], &search->pb);
+        read_index(&search->indexes[i], &search->pb);
     }
     return 0;
 }
@@ -61,7 +61,7 @@ static int load_index(char *filename, SearchContext *search)
 static uint64_t get_search_value(Index idx, SearchContext search)
 {
     if (search.mode == 't') {
-        return idx.timecode.hours * 1000000 + idx.timecode.minutes * 10000 + idx.timecode.seconds * 100 + idx.timecode.frames;
+        return idx.timecode.hours << 24 & idx.timecode.minutes << 16 & idx.timecode.seconds << 8 & idx.timecode.frames;
     }
     else if (search.mode == 'p') {
         return idx.pts;
@@ -93,7 +93,7 @@ static int search_frame(SearchContext *search, Index *read_idx)
         mid -= (mid % INDEX_SIZE) - HEADER_SIZE ;
 
         if (search->mode == 't') {
-            read_time = read_idx->timecode.hours * 1000000 + read_idx->timecode.minutes * 10000 + read_idx->timecode.seconds * 100 + read_idx->timecode.frames;
+            read_time = read_idx->timecode.hours << 24 & read_idx->timecode.minutes << 16 & read_idx->timecode.seconds << 8 & read_idx->timecode.frames;
         }
         else {
             read_time = read_idx->pts;
@@ -117,7 +117,7 @@ int search_frame_dts(SearchContext *search, Index *read_idx)
     ByteIOContext *seek_pb = &search->pb;
     while (i < search->size) {
         url_fseek(seek_pb, i, SEEK_SET);
-        compute_idx(read_idx, seek_pb);
+        read_index(read_idx, seek_pb);
         // looks for the frame that has the dts we're looking for, it's located after the frame with that value as pts
         if (read_idx->dts == tmp_pts) {
             search->index_binary_offset = i; 
@@ -135,7 +135,7 @@ int find_previous_key_frame(Index *key_frame, Index read_idx, SearchContext sear
 
     while (i >= 0){
         url_fseek(seek_pb, i, SEEK_SET);
-        compute_idx(key_frame, seek_pb);
+        read_index(key_frame, seek_pb);
         if (key_frame->pic_type == 1){
             return 1; 
         }
