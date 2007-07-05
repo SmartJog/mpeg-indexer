@@ -34,7 +34,7 @@ static av_always_inline int read_index(Index *read_idx, ByteIOContext *seek_pb)
     return 0;
 }
 
-static int load_index(char *filename, SJ_IndexContext *sj_ic)
+static int sj_index_load(char *filename, SJ_IndexContext *sj_ic)
 {
     register_protocol(&file_protocol);
     
@@ -153,7 +153,7 @@ static int find_previous_key_frame(Index *key_frame, SJ_IndexContext sj_ic)
     return 0;
 }
 
-static char get_frame_type(Index idx)
+char get_frame_type(Index idx)
 {
     char frame = 'U';
     char frame_types[3] = {'I','P','B'};
@@ -169,7 +169,6 @@ int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_val, Index *idx, Ind
     sj_ic->mode = flags;
     sj_ic->search_time = search_val;
     res = search_frame(sj_ic, idx); 
-    printf("res : %d\n", res);
     if (flags == SJ_INDEX_DTS){
         if (idx->pts != idx->dts && idx->dts != sj_ic->search_time) {
             res = search_frame_dts(sj_ic, idx); 
@@ -206,7 +205,7 @@ int main(int argc, char **argv)
         }
     }
     
-    int load_res = load_index(argv[2], &sj_ic);
+    int load_res = sj_index_load(argv[2], &sj_ic);
     if (load_res == -1) {
         printf("File could not be open\n");
         return 0;
@@ -227,7 +226,6 @@ int main(int argc, char **argv)
         printf("Wrong flag\n");
         return 0;
     }
-    printf("flags %lld, searchval : %lld\n", flags, search_val);
     int res = sj_index_search(&sj_ic, search_val, &read_idx, &key_frame, flags);
 
     if (!res){
@@ -240,7 +238,7 @@ int main(int argc, char **argv)
         return 1;
     }
     
-    printf("Frame : \t\ntimecode\t%02d:%02d:%02d:%02d\nPTS\t\t%lld\nDTS\t\t%lld\nPES-OFFSET\t\t%lld\n", read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames, read_idx.pts, read_idx.dts, read_idx.pes_offset);
+    printf("Frame %c : \t\ntimecode\t%02d:%02d:%02d:%02d\nPTS\t\t%lld\nDTS\t\t%lld\nPES-OFFSET\t\t%lld\n", get_frame_type(read_idx) ,read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames, read_idx.pts, read_idx.dts, read_idx.pes_offset);
     printf("Related key-frame : \t\ntimecode\t%02d:%02d:%02d:%02d\nPTS\t\t%lld\nDTS\t\t%lld\nPES-OFFSET\t\t%lld\n", key_frame.timecode.hours,key_frame.timecode.minutes, key_frame.timecode.seconds, key_frame.timecode.frames, key_frame.pts, key_frame.dts, key_frame.pes_offset);
     
     return 0;
