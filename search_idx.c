@@ -12,10 +12,10 @@
 #define SJ_INDEX_DTS 4
 typedef struct{
     uint64_t size;
+    uint8_t version;
     ByteIOContext pb;
     uint64_t search_time;
     uint64_t index_pos;
-    uint8_t start_at;
     uint64_t mode;
     uint64_t index_num;
     Index *indexes;
@@ -54,7 +54,7 @@ static int sj_index_load(char *filename, SJ_IndexContext *sj_ic)
         url_fclose(&sj_ic->pb);
         return -2;
     }
-    printf("Version : %d\n", get_byte(&sj_ic->pb));
+    sj_ic->version = get_byte(&sj_ic->pb);
     if (!sj_ic->index_num){
         // empty index
         url_fclose(&sj_ic->pb);
