@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "indexer.h"
-#include "search_index.h"
+#include "sj_search_index.h"
 
 #define INDEX_SIZE 29
 #define HEADER_SIZE 9 

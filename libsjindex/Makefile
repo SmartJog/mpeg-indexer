@@ -8,7 +8,7 @@ all:	libsjindex
 .c:
 		$(CC) $(CFLAGS) -c $< 
 
-libsjindex:	search_index.o
+libsjindex:	sj_search_index.o
 		$(CC) $(LIBFLAGS),-soname,$@.so.0 -o $@.so.0.0 $^ -lc
 
 cleanall:	clean
