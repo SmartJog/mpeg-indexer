@@ -7,14 +7,16 @@
 #define INDEX_SIZE 29
 #define HEADER_SIZE 9 
 
+#define SJ_INDEX_TIMECODE 1
+#define SJ_INDEX_PTS 2
+#define SJ_INDEX_DTS 4
 typedef struct{
     uint64_t size;
     ByteIOContext pb;
     uint64_t search_time;
     uint64_t index_pos;
     uint8_t start_at;
-    int key_frame_num;
-    char mode;
+    uint64_t mode;
     uint64_t index_num;
     Index *indexes;
 } SJ_IndexContext;
@@ -37,6 +39,8 @@ static int load_index(char *filename, SJ_IndexContext *sj_ic)
     register_protocol(&file_protocol);
     
     if (url_fopen(&sj_ic->pb, filename, URL_RDONLY) < 0) {
+        // file could not be open
+        url_fclose(&sj_ic->pb);
         return -1;
     }
     sj_ic->size = url_fsize(&sj_ic->pb) - HEADER_SIZE;
@@ -46,27 +50,34 @@ static int load_index(char *filename, SJ_IndexContext *sj_ic)
     printf("Index size : %lld\n", sj_ic->size);
     int64_t magic = get_le64(&sj_ic->pb);
     if (magic != 0x534A2D494E444558LL){
+        // not an index file
+        url_fclose(&sj_ic->pb);
         return -2;
     }
+    printf("Version : %d\n", get_byte(&sj_ic->pb));
     if (!sj_ic->index_num){
+        // empty index
+        url_fclose(&sj_ic->pb);
         return -4;
     }
 
     for(int i = 0; i < sj_ic->index_num; i++){
         read_index(&sj_ic->indexes[i], &sj_ic->pb);
     }
+    url_fclose(&sj_ic->pb);
     return 0;
 }
 
 static uint64_t get_search_value(Index idx, SJ_IndexContext sj_ic)
 {
-    if (sj_ic.mode == 't') {
-        return idx.timecode.hours << 24 & idx.timecode.minutes << 16 & idx.timecode.seconds << 8 & idx.timecode.frames;
+    if (sj_ic.mode == SJ_INDEX_TIMECODE) {
+        return idx.timecode.hours * 1000000 + idx.timecode.minutes * 10000 + idx.timecode.seconds * 100 + idx.timecode.frames;
+        //return (idx.timecode.hours << 24) | (idx.timecode.minutes << 16) | (idx.timecode.seconds << 8) | idx.timecode.frames;
     }
-    else if (sj_ic.mode == 'p') {
+    else if (sj_ic.mode == SJ_INDEX_PTS) {
         return idx.pts;
     }
-    else if (sj_ic.mode == 'd') {
+    else if (sj_ic.mode == SJ_INDEX_DTS) {
         return idx.dts;
     }
     return 0;
@@ -84,66 +95,65 @@ static int search_frame(SJ_IndexContext *sj_ic, Index *read_idx)
     read_time = get_search_value(sj_ic->indexes[0], *sj_ic);
    
     if (read_time == sj_ic->search_time){
+        *read_idx = sj_ic->indexes[0];
         return 1;
     } else if (read_time > sj_ic->search_time) {
         return -1;
     }
     while (low <= high) {
         mid = (int)((high + low) / 2);
-
-        if (sj_ic->mode == 't') {
-            read_time = sj_ic->indexes[mid]->timecode.hours << 24 & sj_ic->indexes[mid]->timecode.minutes << 16 & sj_ic->indexes[mid]->timecode.seconds << 8 & sj_ic->indexes[mid]->timecode.frames;
+        if (sj_ic->mode == SJ_INDEX_TIMECODE) {
+            read_time = sj_ic->indexes[mid].timecode.hours * 10000000 + sj_ic->indexes[mid].timecode.minutes * 10000 +  sj_ic->indexes[mid].timecode.seconds * 100 + sj_ic->indexes[mid].timecode.frames;
+//            read_time = sj_ic->indexes[mid].timecode.hours << 24 & sj_ic->indexes[mid].timecode.minutes << 16 & sj_ic->indexes[mid].timecode.seconds << 8 & sj_ic->indexes[mid].timecode.frames;
         }
         else {
-            read_time = sj_ic->indexes[mid]->pts;
+            read_time = sj_ic->indexes[mid].pts;
         }
         if (read_time == sj_ic->search_time){
             sj_ic->index_pos = mid;
+            *read_idx = sj_ic->indexes[mid];
             return 1;
         } else if (read_time > sj_ic->search_time) {
-            high = mid - INDEX_SIZE;
+            high = mid - 1;
         } else if (read_time < sj_ic->search_time) {
-            low = mid + INDEX_SIZE;
+            low = mid + 1;
         }
     }
     return 0;
 }
 
-int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx)
+static int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx)
 {
-    uint64_t i = sj_ic->index_binary_offset + INDEX_SIZE;
-    uint64_t tmp_pts = read_idx->pts;
-    ByteIOContext *seek_pb = &sj_ic->pb;
-    while (i < sj_ic->size) {
-        url_fseek(seek_pb, i, SEEK_SET);
-        read_index(read_idx, seek_pb);
+    uint64_t i = sj_ic->index_pos;
+
+    while (i < sj_ic->index_num) {
         // looks for the frame that has the dts we're looking for, it's located after the frame with that value as pts
-        if (read_idx->dts == tmp_pts) {
-            sj_ic->index_binary_offset = i; 
+        if (sj_ic->indexes[i].dts == sj_ic->search_time) {
+            *read_idx = sj_ic->indexes[i];
+            sj_ic->index_pos = i; 
             return 1;
         }
-        i += INDEX_SIZE;
+        i++;
     }
     return 0;
 }
 
-int find_previous_key_frame(Index *key_frame, Index read_idx, SJ_IndexContext sj_ic)
+static int find_previous_key_frame(Index *key_frame, SJ_IndexContext sj_ic)
 {
-    int i = sj_ic.index_binary_offset - INDEX_SIZE;
-    ByteIOContext *seek_pb = &sj_ic.pb;
+    int i = sj_ic.index_pos;
 
     while (i >= 0){
-        url_fseek(seek_pb, i, SEEK_SET);
-        read_index(key_frame, seek_pb);
-        if (key_frame->pic_type == 1){
-            return 1; 
+        if (sj_ic.indexes[i].pic_type == 1) {
+            *key_frame = sj_ic.indexes[i];
+            sj_ic.index_pos = i; 
+            return 1;
         }
-        i -= INDEX_SIZE;
+        i--;
     }
     return 0;
 }
 
-char get_frame_type(Index idx)
+static char get_frame_type(Index idx)
 {
     char frame = 'U';
     char frame_types[3] = {'I','P','B'};
@@ -153,15 +163,38 @@ char get_frame_type(Index idx)
     return frame;
 }
 
+int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_val, Index *idx, Index *key_frame, uint64_t flags)
+{
+    int res = 0;
+    sj_ic->mode = flags;
+    sj_ic->search_time = search_val;
+    res = search_frame(sj_ic, idx); 
+    printf("res : %d\n", res);
+    if (flags == SJ_INDEX_DTS){
+        if (idx->pts != idx->dts && idx->dts != sj_ic->search_time) {
+            res = search_frame_dts(sj_ic, idx); 
+        }
+    }
+    char frame = get_frame_type(*idx);
+    if (frame != 'I'){
+        find_previous_key_frame(key_frame, *sj_ic);
+    }
+
+    return res; // res = 0 if frame wasn't found, -1 if the first value in the index is greater than the one we're looking for
+}
+
 int main(int argc, char **argv)
 {
     SJ_IndexContext sj_ic;
     Index read_idx;
     Index key_frame;
-
+    uint64_t search_val;
+    
+    memset(&key_frame, 0, sizeof(key_frame));
+    memset(&read_idx, 0, sizeof(read_idx));
     if (argc < 4) {
         printf("usage: search_idx <parameter type> <index file> <hhmmssff>\n");
-        printf("parameters types are :\n\t-t\ttimecode\n\t-p\tpts\n\t-d\tdts\n");
+        printf("parameters types are :\n\t1\ttimecode\n\t2\tpts\n\t4\tdts\n");
         return 1;
     }
 
@@ -188,47 +221,27 @@ int main(int argc, char **argv)
         printf("Index is empty\n");
         return 0;
     }
-//    printf("Version : %d\n", get_byte(&sj_ic.pb));
-    sj_ic.key_frame_num =0;
-    int res = 0;
-    sj_ic.mode = argv[1][1];
-    switch(sj_ic.mode){
-        case 't':
-            if (strlen(argv[3]) != 8){
-                printf("timecode is invalid\n\tmust be of the form : hhmmssff\n");
-                return 0;
-            }
-            printf("Looking for frame with timecode : %c%c:%c%c:%c%c:%c%c\n",argv[3][0], argv[3][1], argv[3][2], argv[3][3], argv[3][4], argv[3][5], argv[3][6], argv[3][7]);
-        case 'p':
-            sj_ic.search_time = atoll(argv[3]);
-            res = search_frame(&sj_ic, &read_idx); 
-            break;
-        case 'd':
-            sj_ic.search_time = atoll(argv[3]);
-            res = search_frame(&sj_ic, &read_idx);
-            if (read_idx.pts != read_idx.dts && read_idx.dts != sj_ic.search_time) {
-                res = search_frame_dts(&sj_ic, &read_idx); 
-            }
-            break;
+    search_val = atoll(argv[3]);
+    uint64_t flags = atoll(argv[1]);
+    if ((flags != 1) && (flags != 2) && (flags != 4)){
+        printf("Wrong flag\n");
+        return 0;
     }
+    printf("flags %lld, searchval : %lld\n", flags, search_val);
+    int res = sj_index_search(&sj_ic, search_val, &read_idx, &key_frame, flags);
+
     if (!res){
         printf("Frame could not be found, check input data\n");
         return 1;
     } 
 
     if (res == -1) {
-        printf("Video starts at\ntimecode\t%02d:%02d:%02d:%02d\nPTS\t\t%lld\nDTS\t\t%lld\n", read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames, read_idx.pts, read_idx.dts);
+        printf("Video starts at\ntimecode\t%02d:%02d:%02d:%02d\nPTS\t\t%lld\nDTS\t\t%lld\n", sj_ic.indexes[0].timecode.hours, sj_ic.indexes[0].timecode.minutes, sj_ic.indexes[0].timecode.seconds, sj_ic.indexes[0].timecode.frames, sj_ic.indexes[0].pts, sj_ic.indexes[0].dts);
         return 1;
     }
-
-    char frame = get_frame_type(read_idx);
-    printf("\n------ %c-Frame -------\nTimecode : %02d:%02d:%02d:%02d\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(read_idx), read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames, read_idx.dts, read_idx.pts, read_idx.pes_offset);
-    if (frame != 'I'){
-        printf("\nClosest I-frame to the seeked frame: \n");
-        find_previous_key_frame(&key_frame, read_idx, sj_ic);
-        printf("\n------ %c-Frame -------\nTimecode : %02d:%02d:%02d:%02d\nDTS : %lld\nPTS : %lld\nOffset : %lld\n------------------\n",  get_frame_type(key_frame), key_frame.timecode.hours, key_frame.timecode.minutes, key_frame.timecode.seconds, key_frame.timecode.frames, key_frame.dts, key_frame.pts, key_frame.pes_offset);
-    }
-
-    url_fclose(&sj_ic.pb);
+    
+    printf("Frame : \t\ntimecode\t%02d:%02d:%02d:%02d\nPTS\t\t%lld\nDTS\t\t%lld\nPES-OFFSET\t\t%lld\n", read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames, read_idx.pts, read_idx.dts, read_idx.pes_offset);
+    printf("Related key-frame : \t\ntimecode\t%02d:%02d:%02d:%02d\nPTS\t\t%lld\nDTS\t\t%lld\nPES-OFFSET\t\t%lld\n", key_frame.timecode.hours,key_frame.timecode.minutes, key_frame.timecode.seconds, key_frame.timecode.frames, key_frame.pts, key_frame.dts, key_frame.pes_offset);
+    
     return 0;
 }
