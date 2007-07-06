@@ -6,6 +6,7 @@
 #define SJ_INDEX_DTS_SEARCH 4
 typedef struct{
     uint64_t size;
+    uint8_t version;
     uint64_t search_time;
     uint64_t index_pos;
     uint64_t mode;
