@@ -40,7 +40,8 @@ int sj_index_load(char *filename, SJ_IndexContext *sj_ic)
         url_fclose(&pb);
         return -2;
     }
-    sj_ic->version = get_byte(&pb);
+    uint8_t version = get_byte(&pb);
+    printf("LibSjIndex version %d\n", version);
     if (!sj_ic->index_num){
         // empty index
         url_fclose(&pb);
