@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-fPIC -Wall -g -std=c99
 LIBFLAGS=-g -shared -Wl
 LDFLAGS=-lavformat -lavcodec -lavutil -lm 
-DESTDIR = /
+DESTDIR = /usr/local/
 all:	libsjindex	
 
 .c:
@@ -14,10 +14,10 @@ libsjindex:	sj_search_index.o
 cleanall:	clean
 
 install: 
-		cp *.h /usr/local/include
-		cp libsjindex.so.* /usr/local/
-		/sbin/ldconfig -n /usr/local/
-		ln -sf /usr/local/libsjindex.so.0 /usr/local/libsjindex.so
+		cp *.h $(DESTDIR)/include
+		cp libsjindex.so.* $(DESTDIR)
+		/sbin/ldconfig -n $(DESTDIR)
+		ln -sf $(DESTDIR)/libsjindex.so.0 $(DESTDIR)/libsjindex.so
 
 clean:
 		rm -f *.o *~
