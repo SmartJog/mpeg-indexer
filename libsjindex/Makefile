@@ -14,6 +14,10 @@ libsjindex:	sj_search_index.o
 cleanall:	clean
 
 install: 
+		cp *.h /usr/local/include
+		cp libsjindex.so.* /usr/local/
+		/sbin/ldconfig -n /usr/local/
+		ln -sf /usr/local/libsjindex.so.0 /usr/local/libsjindex.so
 
 clean:
 		rm -f *.o *~
