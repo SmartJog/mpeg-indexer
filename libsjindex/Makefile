@@ -3,6 +3,7 @@ CFLAGS=-fPIC -Wall -g -std=c99
 LIBFLAGS=-g -shared -Wl
 LDFLAGS=-lavformat -lavcodec -lavutil -lm 
 DESTDIR = /usr/local/
+LIBSONAME = libsjindex.so
 all:	libsjindex	
 
 .c:
@@ -15,9 +16,9 @@ cleanall:	clean
 
 install: 
 		cp *.h $(DESTDIR)/include
-		cp libsjindex.so.* $(DESTDIR)
+		cp $(LIBSONAME).* $(DESTDIR)
 		/sbin/ldconfig -n $(DESTDIR)
-		ln -sf $(DESTDIR)/libsjindex.so.0 $(DESTDIR)/libsjindex.so
+		ln -sf $(DESTDIR)/$(LIBSONAME).0 $(DESTDIR)/$(LIBSONAME)
 
 clean:
 		rm -f *.o *~
