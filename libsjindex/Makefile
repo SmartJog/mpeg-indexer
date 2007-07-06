@@ -1,27 +1,29 @@
 CC=gcc
-CFLAGS=-fPIC -Wall -g -std=c99
-LIBFLAGS=-g -shared -Wl
+CFLAGS=-fPIC -DPIC -Wall -g -std=c99
+LIBFLAGS=-shared -Wl
 LDFLAGS=-lavformat -lavcodec -lavutil -lm 
 DESTDIR = /usr/local/lib
 
-LIBSONAME = libsjindex.so.0.0.1
-LIBREALNAME = libsjindex.so.0
-LIBLINKERNAME = libsjindex.so
-all:	libsjindex	
 
-.c:
-		$(CC) $(CFLAGS) -c $< 
+LIBSONAME_MAJOR = libsjindex.so.0
+LIBSONAME_FULL = libsjindex.so.0.0.1
+LIBSONAME = libsjindex.so
 
-libsjindex:	sj_search_index.o
-		$(CC) $(LIBFLAGS),-soname,$@.so.0 -o $@.so.0.0.1 $^ -lc
+all:	$(LIBSONAME_MAJOR)	
+
+.c.o:
+		$(CC) $(CFLAGS) -c $< -o $@
+
+$(LIBSONAME_MAJOR):	sj_search_index.o
+		$(CC) $(LIBFLAGS),-soname,$@ $^ -o $@
 
 cleanall:	clean
 
 install: 
 		install -d $(DESTDIR)
-		install -m 755 $(LIBSONAME) $(DESTDIR) 
-		ln -sf $(LIBSONAME) $(DESTDIR)/$(LIBREALNAME)
-		ln -sf $(LIBSONAME) $(DESTDIR)/$(LIBLINKERNAME)
+		install -m 755 $(LIBSONAME_MAJOR) $(DESTDIR) 
+		ln -sf $(LIBSONAME_MAJOR) $(DESTDIR)/$(LIBSONAME)
+		ln -sf $(LIBSONAME_MAJOR) $(DESTDIR)/$(LIBSONAME_FULL)
 
 clean:
 		rm -f *.o *~
