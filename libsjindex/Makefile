@@ -19,7 +19,7 @@ cleanall:	clean
 
 install: 
 		install -d $(DESTDIR)
-		install -t $(DESTDIR) $(LIBSONAME)
+		install -m 755 $(LIBSONAME) $(DESTDIR) 
 		ln -sf $(LIBSONAME) $(DESTDIR)/$(LIBREALNAME)
 		ln -sf $(LIBSONAME) $(DESTDIR)/$(LIBLINKERNAME)
 
