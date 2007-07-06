@@ -26,7 +26,6 @@ int sj_index_load(char *filename, SJ_IndexContext *sj_ic)
     
     if (url_fopen(&pb, filename, URL_RDONLY) < 0) {
         // file could not be open
-        url_fclose(&pb);
         return -1;
     }
     sj_ic->size = url_fsize(&pb) - HEADER_SIZE;
