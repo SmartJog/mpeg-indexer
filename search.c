@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "indexer.h"
+#include "libsjindex/indexer.h"
 #include "libsjindex/sj_search_index.h"
 
 int main(int argc, char **argv)
