@@ -45,16 +45,17 @@ int main(int argc, char **argv)
     }
     search_val = atoll(argv[3]);
     uint64_t flags = atoll(argv[1]);
-    if ((flags != 1) && (flags != 2) && (flags != 4)){
-        printf("Wrong flag\n");
-        return 0;
-    }
     int res = sj_index_search(&sj_ic, search_val, &read_idx, &key_frame, flags);
 
     if (!res){
         printf("Frame could not be found, check input data\n");
         return 1;
     } 
+
+    if (res == -2) {
+        printf("Invalid search mode\n");
+        return 1;
+    }
 
     if (res == -1) {
         printf("Video starts at\ntimecode\t%02d:%02d:%02d:%02d\nPTS\t\t%lld\nDTS\t\t%lld\n", sj_ic.indexes[0].timecode.hours, sj_ic.indexes[0].timecode.minutes, sj_ic.indexes[0].timecode.seconds, sj_ic.indexes[0].timecode.frames, sj_ic.indexes[0].pts, sj_ic.indexes[0].dts);
