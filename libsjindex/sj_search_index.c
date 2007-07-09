@@ -1,3 +1,7 @@
+/*
+ * sj_search_index.c defines a set of functions used to search 
+ * a MPEG2 frame's pes offset 
+ */
 #include <ffmpeg/avformat.h>
 #include <stdlib.h>
 #include <string.h>
@@ -63,7 +67,6 @@ static uint64_t get_search_value(Index idx, SJ_IndexContext sj_ic)
 {
     if (sj_ic.mode == SJ_INDEX_TIMECODE_SEARCH) {
         return idx.timecode.hours * 1000000 + idx.timecode.minutes * 10000 + idx.timecode.seconds * 100 + idx.timecode.frames;
-        //return (idx.timecode.hours << 24) | (idx.timecode.minutes << 16) | (idx.timecode.seconds << 8) | idx.timecode.frames;
     }
     else if (sj_ic.mode == SJ_INDEX_PTS_SEARCH) {
         return idx.pts;
@@ -95,7 +98,6 @@ static int search_frame(SJ_IndexContext *sj_ic, Index *read_idx)
         mid = (int)((high + low) / 2);
         if (sj_ic->mode == SJ_INDEX_TIMECODE_SEARCH) {
             read_time = sj_ic->indexes[mid].timecode.hours * 10000000 + sj_ic->indexes[mid].timecode.minutes * 10000 +  sj_ic->indexes[mid].timecode.seconds * 100 + sj_ic->indexes[mid].timecode.frames;
-//            read_time = sj_ic->indexes[mid].timecode.hours << 24 & sj_ic->indexes[mid].timecode.minutes << 16 & sj_ic->indexes[mid].timecode.seconds << 8 & sj_ic->indexes[mid].timecode.frames;
         }
         else {
             read_time = sj_ic->indexes[mid].pts;
