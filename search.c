@@ -43,6 +43,7 @@ int main(int argc, char **argv)
         printf("Index is empty\n");
         return 0;
     }
+    printf("Index size : %lld\n", sj_ic.size);
     search_val = atoll(argv[3]);
     uint64_t flags = atoll(argv[1]);
     int res = sj_index_search(&sj_ic, search_val, &read_idx, &key_frame, flags);
