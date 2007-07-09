@@ -10,7 +10,7 @@
 #include "sj_search_index.h"
 
 #define INDEX_SIZE 29
-#define HEADER_SIZE 9 
+#define HEADER_SIZE 9
 static av_always_inline int read_index(Index *read_idx, ByteIOContext *seek_pb)
 {
     read_idx->pts = get_le64(seek_pb);
@@ -35,7 +35,7 @@ int sj_index_load(char *filename, SJ_IndexContext *sj_ic)
     }
     sj_ic->size = url_fsize(&pb) - HEADER_SIZE;
     sj_ic->index_num = (int)(sj_ic->size / INDEX_SIZE);
-    sj_ic->indexes = av_malloc(sj_ic->index_num * sizeof(Index)); 
+    sj_ic->indexes = av_malloc(sj_ic->index_num * sizeof(Index));
 
     printf("Index size : %lld\n", sj_ic->size);
     int64_t magic = get_le64(&pb);
@@ -84,7 +84,7 @@ static int search_frame(SJ_IndexContext *sj_ic, Index *read_idx)
     uint64_t low = 0;
     uint64_t mid = high / 2;
 
-    uint64_t read_time = 0; // used to store the timecode members in a single 64 bits integer to facilitate comparison 
+    uint64_t read_time = 0; // used to store the timecode members in a single 64 bits integer to facilitate comparison
 
     read_time = get_search_value(sj_ic->indexes[0], *sj_ic);
    
@@ -124,7 +124,7 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx)
         // looks for the frame that has the dts we're looking for, it's located after the frame with that value as pts
         if (sj_ic->indexes[i].dts == sj_ic->search_time) {
             *read_idx = sj_ic->indexes[i];
-            sj_ic->index_pos = i; 
+            sj_ic->index_pos = i;
             return 1;
         }
         i++;
@@ -139,7 +139,7 @@ static int find_previous_key_frame(Index *key_frame, SJ_IndexContext sj_ic)
     while (i >= 0){
         if (sj_ic.indexes[i].pic_type == 1) {
             *key_frame = sj_ic.indexes[i];
-            sj_ic.index_pos = i; 
+            sj_ic.index_pos = i;
             return 1;
         }
         i--;
@@ -159,19 +159,19 @@ char sj_index_get_frame_type(Index idx)
 int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_val, Index *idx, Index *key_frame, uint64_t flags)
 {
     int res = 0;
-    if (flags != SJ_INDEX_TIMECODE_SEARCH && flags != SJ_INDEX_PTS_SEARCH && flags != SJ_INDEX_DTS_SEARCH){
+    if (flags != SJ_INDEX_TIMECODE_SEARCH && flags != SJ_INDEX_PTS_SEARCH && flags != SJ_INDEX_DTS_SEARCH) {
         return -2;  // invalid flag value
     }
     sj_ic->mode = flags;
     sj_ic->search_time = search_val;
-    res = search_frame(sj_ic, idx); 
-    if (flags == SJ_INDEX_DTS_SEARCH){
+    res = search_frame(sj_ic, idx);
+    if (flags == SJ_INDEX_DTS_SEARCH) {
         if (idx->pts != idx->dts && idx->dts != sj_ic->search_time) {
-            res = search_frame_dts(sj_ic, idx); 
+            res = search_frame_dts(sj_ic, idx);
         }
     }
     char frame = sj_index_get_frame_type(*idx);
-    if (frame != 'I'){
+    if (frame != 'I') {
         find_previous_key_frame(key_frame, *sj_ic);
     }
 
