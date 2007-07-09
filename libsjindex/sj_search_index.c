@@ -38,19 +38,19 @@ int sj_index_load(char *filename, SJ_IndexContext *sj_ic)
     sj_ic->indexes = av_malloc(sj_ic->index_num * sizeof(Index));
 
     int64_t magic = get_le64(&pb);
-    if (magic != 0x534A2D494E444558LL){
+    if (magic != 0x534A2D494E444558LL) {
         // not an index file
         url_fclose(&pb);
         return -2;
     }
     sj_ic->version = get_byte(&pb);
-    if (!sj_ic->index_num){
+    if (!sj_ic->index_num) {
         // empty index
         url_fclose(&pb);
         return -4;
     }
 
-    for(int i = 0; i < sj_ic->index_num; i++){
+    for(int i = 0; i < sj_ic->index_num; i++) {
         read_index(&sj_ic->indexes[i], &pb);
     }
     url_fclose(&pb);
