@@ -159,7 +159,7 @@ int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_val, Index *idx, Ind
 {
     int res = 0;
     if (flags != SJ_INDEX_TIMECODE_SEARCH && flags != SJ_INDEX_PTS_SEARCH && flags != SJ_INDEX_DTS_SEARCH){
-        return -2;  // -2 return value is for invalid flag value
+        return -2;  // invalid flag value
     }
     sj_ic->mode = flags;
     sj_ic->search_time = search_val;
