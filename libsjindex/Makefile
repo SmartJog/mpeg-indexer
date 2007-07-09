@@ -4,13 +4,13 @@ LIBFLAGS=-shared -Wl
 LDFLAGS=-lavformat -lavcodec -lavutil -lm 
 DESTDIR = /usr/local/lib
 
-MAJOR = 0
-MINOR = 0
+MAJOR 		= 0
+MINOR 		= 0
 PATCH_LEVEL = 1
 
 LIBSONAME_MAJOR = libsjindex.so.$(MAJOR)
-LIBSONAME_FULL = libsjindex.so.$(MAJOR).$(MINOR).$(PATCH_LEVEL)
-LIBSONAME = libsjindex.so
+LIBSONAME_FULL  = libsjindex.so.$(MAJOR).$(MINOR).$(PATCH_LEVEL)
+LIBSONAME 		= libsjindex.so
 
 all:	$(LIBSONAME_FULL)	
 
