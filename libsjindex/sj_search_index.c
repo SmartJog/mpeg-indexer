@@ -85,9 +85,9 @@ static int search_frame(SJ_IndexContext *sj_ic, Index *read_idx)
 
     uint64_t read_time = 0; // used to store the timecode members in a single 64 bits integer to facilitate comparison 
 
-    // Checks if the value we want is inferior or equal to the first value in the file
     read_time = get_search_value(sj_ic->indexes[0], *sj_ic);
    
+    // Checks if the value we want is inferior or equal to the first value in the file
     if (read_time == sj_ic->search_time){
         *read_idx = sj_ic->indexes[0];
         return 1;
