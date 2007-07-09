@@ -148,12 +148,11 @@ static int find_previous_key_frame(Index *key_frame, SJ_IndexContext sj_ic)
 
 char sj_index_get_frame_type(Index idx)
 {
-    char frame = 'U';
     char frame_types[3] = {'I','P','B'};
     if (idx.pic_type > 0 && idx.pic_type < 4) {
-        frame = frame_types[idx.pic_type - 1];
+        return frame_types[idx.pic_type - 1];
     }
-    return frame;
+    return 'U';
 }
 
 int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_val, Index *idx, Index *key_frame, uint64_t flags)
