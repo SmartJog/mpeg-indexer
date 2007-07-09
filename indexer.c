@@ -1,3 +1,9 @@
+/*
+ * Indexer takes a Mpeg file as first argument and the name of an output file as second argument
+ * it then creates an Index file of the initial mpeg stream containing for each frame 
+ * its timecode, pts, dts, pes offset and type of encoding (I, P, B)
+ *
+ */
 #include <ffmpeg/avformat.h>
 #include <stdlib.h>
 #include <string.h>

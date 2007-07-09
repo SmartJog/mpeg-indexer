@@ -1,6 +1,6 @@
 /*
  * sj_search_index.c defines a set of functions used to find
- * the PES offset of a frame given an Index file and a timereference
+ * the PES offset of a frame given an Index file and a time reference
  * 
  */
 #include <ffmpeg/avformat.h>
