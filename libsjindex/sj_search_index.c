@@ -154,16 +154,16 @@ char sj_index_get_frame_type(Index idx)
     return 'U';
 }
 
-int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_val, Index *idx, Index *key_frame, uint64_t flags)
+int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_time, Index *idx, Index *key_frame, uint64_t mode)
 {
-    if (flags != SJ_INDEX_TIMECODE_SEARCH && flags != SJ_INDEX_PTS_SEARCH && flags != SJ_INDEX_DTS_SEARCH) {
+    if (mode != SJ_INDEX_TIMECODE_SEARCH && mode != SJ_INDEX_PTS_SEARCH && mode != SJ_INDEX_DTS_SEARCH) {
         return -4;  // invalid flag value
     }
 
-    int pos = search_frame(sj_ic, idx, search_val, flags);
-    if (flags == SJ_INDEX_DTS_SEARCH) {
-        if (idx->pts != idx->dts && idx->dts != search_val) {
-            pos = search_frame_dts(sj_ic, idx, search_val, pos);
+    int pos = search_frame(sj_ic, idx, search_time, mode);
+    if (mode == SJ_INDEX_DTS_SEARCH) {
+        if (idx->pts != idx->dts && idx->dts != search_time) {
+            pos = search_frame_dts(sj_ic, idx, search_time, pos);
         }
     }
     if (idx->pic_type != FF_I_TYPE) {
