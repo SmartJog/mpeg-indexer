@@ -138,7 +138,7 @@ static int find_relative_key_frame(Index *key_frame, SJ_IndexContext sj_ic)
     int exit_loop = 0;
     Index *prev = NULL, *next = NULL;
 
-    while (i >= 0 || j < sj_ic.index_num) {
+    for(; i >= 0 || j < sj_ic.index_num; i--, j++) {
         if (sj_ic.indexes[i].pic_type == 1 && i >= 0) {
             exit_loop++;
             prev = &sj_ic.indexes[i];
@@ -150,8 +150,6 @@ static int find_relative_key_frame(Index *key_frame, SJ_IndexContext sj_ic)
         if (exit_loop == 2 || (exit_loop == 1 && (i < 0 || j >= sj_ic.index_num))) {
             break;
         }
-        i--;
-        j++;
     }
     if (!next || sj_ic.indexes[sj_ic.index_pos].dts < next->dts) {
         *key_frame = *prev;
