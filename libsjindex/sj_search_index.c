@@ -135,14 +135,14 @@ static int find_relative_key_frame(Index *key_frame, SJ_IndexContext sj_ic)
 {
     // if the next I_frame has a dts inferior to the searched dts then this I_frame is the related key_frame 
     for (int i = sj_ic.index_pos; i < sj_ic.index_num; i++){
-        if (sj_ic.indexes[i].pic_type == 1 && sj_ic.indexes[i].dts < sj_ic.indexes[sj_ic.index_pos].dts) {
+        if (sj_ic.indexes[i].pic_type == FF_I_TYPE && sj_ic.indexes[i].dts < sj_ic.indexes[sj_ic.index_pos].dts) {
             *key_frame = sj_ic.indexes[i];
             return 0;
         }
     }
     // otherwise, look before the searched frame
     for (int i = sj_ic.index_pos; i >= 0; i--) {
-        if (sj_ic.indexes[i].pic_type == 1) {
+        if (sj_ic.indexes[i].pic_type == FF_I_TYPE) {
             *key_frame = sj_ic.indexes[i];
             return 0;
         }
@@ -174,8 +174,7 @@ int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_val, Index *idx, Ind
             res = search_frame_dts(sj_ic, idx);
         }
     }
-    char frame = sj_index_get_frame_type(*idx);
-    if (frame != 'I') {
+    if (idx->pic_type != FF_I_TYPE) {
         find_relative_key_frame(key_frame, *sj_ic);
     }
 
