@@ -167,7 +167,7 @@ int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_time, Index *idx, In
             pos = search_frame_dts(sj_ic, idx, search_time, pos);
         }
     }
-    if (idx->pic_type != FF_I_TYPE) {
+    if (idx->pic_type != FF_I_TYPE && pos >= 0) {
         find_relative_key_frame(key_frame, *sj_ic, pos);
     }
 
