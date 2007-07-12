@@ -69,11 +69,8 @@ static uint64_t get_search_value(Index idx, int mode)
     if (mode == SJ_INDEX_TIMECODE_SEARCH) {
         return idx.timecode.hours * 1000000 + idx.timecode.minutes * 10000 + idx.timecode.seconds * 100 + idx.timecode.frames;
     }
-    else if (mode == SJ_INDEX_PTS_SEARCH) {
+    else {
         return idx.pts;
-    }
-    else if (mode == SJ_INDEX_DTS_SEARCH) {
-        return idx.dts;
     }
     return 0;
 }
@@ -86,23 +83,10 @@ static int search_frame(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t search
 
     uint64_t read_time = 0; // used to store the timecode members in a single 64 bits integer to facilitate comparison
 
-    read_time = get_search_value(sj_ic->indexes[0], mode);
-   
-    // Checks if the value we want is inferior or equal to the first value in the file
-    if (read_time == search_time) {
-        *read_idx = sj_ic->indexes[0];
-        return 0; 
-    } else if (read_time > search_time) {
-        return -1;
-    }
     while (low <= high) {
         mid = (int)((high + low) / 2);
-        if (mode == SJ_INDEX_TIMECODE_SEARCH) {
-            read_time = sj_ic->indexes[mid].timecode.hours * 1000000 + sj_ic->indexes[mid].timecode.minutes * 10000 +  sj_ic->indexes[mid].timecode.seconds * 100 + sj_ic->indexes[mid].timecode.frames;
-        }
-        else {
-            read_time = sj_ic->indexes[mid].pts;
-        }
+        read_time = get_search_value(sj_ic->indexes[mid], mode);
+
         if (read_time == search_time) {
             *read_idx = sj_ic->indexes[mid];
             return mid;
