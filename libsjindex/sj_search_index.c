@@ -183,7 +183,6 @@ int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_val, Index *idx, Ind
     sj_ic->mode = flags;
     sj_ic->search_time = search_val;
     res = search_frame(sj_ic, idx);
-    printf("res : %d\n", res);
 
     if (flags == SJ_INDEX_DTS_SEARCH) {
         if (idx->pts != idx->dts && idx->dts != sj_ic->search_time) {
