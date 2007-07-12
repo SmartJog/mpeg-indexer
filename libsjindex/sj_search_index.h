@@ -6,10 +6,8 @@
 #define SJ_INDEX_TIMECODE_SEARCH 1
 #define SJ_INDEX_PTS_SEARCH 2
 #define SJ_INDEX_DTS_SEARCH 4
-static uint64_t index_pos;
-static uint64_t search_time;
-static uint64_t mode;
-typedef struct{
+
+typedef struct {
     uint64_t size;
     uint8_t version;
     uint64_t index_num;
