@@ -11,7 +11,7 @@
 #define SJ_INDEX_DTS_SEARCH 4
 
 /**
- * Search context, initialized with sj_index_load
+ * Index context, initialized with sj_index_load
  * Used in sj_index_search to find a frame
  */
 typedef struct {
@@ -29,18 +29,18 @@ typedef struct {
 int sj_index_load(char *filename, SJ_IndexContext *sj_ic);
 
 /**
- * Resests the SJ_IndexContext (empties the list, set all other variables to 0.
+ * Resets the SJ_IndexContext (empties the list, set all other variables to 0.
  */
 int sj_index_unload(SJ_IndexContext *sj_ic);
 
 /**
- * Return a char corresponding to the frame type (I, P, B, or U if the type could not be determined)
+ * Returns a char corresponding to the frame type (I, P, B, or U if the type could not be determined)
  * Used for display, no real use in the search.
  */
 char sj_index_get_frame_type(Index idx);
 
 /**
- * Searches the list of indexes in the SJ_IndexContext for the on that has search time as a timecode, dts or pts
+ * Searches the list of indexes in the SJ_IndexContext for the one that has search_time as a timecode, dts or pts
  * idx is the corresponding index if it was found.
  * key_frame is the related key_frame's index needed to decode the frame referenced by idx.
  *
