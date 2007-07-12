@@ -16,6 +16,7 @@ typedef struct {
     uint8_t version; /// version number of the index file
     uint64_t index_num; /// number of indexes in the file
     Index *indexes; /// list of indexes read from the file
+    char *filename; /// index file name
 } SJ_IndexContext;
 
 /**
@@ -42,6 +43,6 @@ char sj_index_get_frame_type(Index idx);
  *      if mode = SJ_INDEX_PTS_SEARCH then the function will look for a index with a pts equal to search_time
  *      if mode = SJ_INDEX_DTS_SEARCH then the function will look for a index with a dts equal to search_time
  */
-int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_time, Index *idx, Index *key_frame, uint64_t mode)
+int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_time, Index *idx, Index *key_frame, uint64_t mode);
 #endif /* SJ_SEARCH_H */ 
 
