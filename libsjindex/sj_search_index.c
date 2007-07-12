@@ -153,11 +153,11 @@ static int find_relative_key_frame(Index *key_frame, SJ_IndexContext sj_ic)
         i--;
         j++;
     }
-    if (!next) {
+    if (!next || sj_ic.indexes[sj_ic.index_pos].dts < next->dts) {
         *key_frame = *prev;
         return 0;
     } 
-    if (!prev) {
+    if (!prev || sj_ic.indexes[sj_ic.index_pos].dts < prev->dts) {
         *key_frame = *next;
         return 0;
     }
