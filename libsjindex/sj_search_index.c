@@ -59,6 +59,9 @@ int sj_index_load(char *filename, SJ_IndexContext *sj_ic)
 
 int sj_index_unload(SJ_IndexContext *sj_ic)
 {
+    sj_ic->size = 0;
+    sj_ic->version = 0;
+    sj_ic->index_num = 0;
     free(sj_ic->indexes);
     return 0;
 }
