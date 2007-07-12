@@ -119,14 +119,13 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx)
 {
     uint64_t i = sj_ic->index_pos;
 
-    while (i < sj_ic->index_num) {
-        // looks for the frame that has the dts we're looking for, it's located after the frame with that value as pts
+    // looks for the frame that has the dts we're looking for, it's located after the frame with that value as pts
+    for (int i = sj_ic->index_pos; i < sj_ic->index_num; i++) {
         if (sj_ic->indexes[i].dts == sj_ic->search_time) {
             *read_idx = sj_ic->indexes[i];
             sj_ic->index_pos = i;
             return 1;
         }
-        i++;
     }
     return 0;
 }
