@@ -80,9 +80,9 @@ static uint64_t get_search_value(Index idx, int mode)
 
 static int search_frame(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t search_time, int mode)
 {
-    uint64_t high = sj_ic->index_num;
-    uint64_t low = 0;
-    uint64_t mid = high / 2;
+    int64_t high = sj_ic->index_num;
+    int64_t low = 0;
+    int64_t mid = high / 2;
 
     uint64_t read_time = 0; // used to store the timecode members in a single 64 bits integer to facilitate comparison
 
@@ -115,10 +115,10 @@ static int search_frame(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t search
     return -2;
 }
 
-static int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t search_time, int index_pos)
+static int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t search_time, int64_t index_pos)
 {
     // looks for the frame that has the dts we're looking for, it's located after the frame with that value as pts
-    for (int i = index_pos; i < sj_ic->index_num; i++) {
+    for (int64_t i = index_pos; i < sj_ic->index_num; i++) {
         if (sj_ic->indexes[i].dts == search_time) {
             *read_idx = sj_ic->indexes[i];
             return index_pos;
@@ -127,17 +127,17 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t se
     return -2;
 }
 
-static int find_relative_key_frame(Index *key_frame, SJ_IndexContext sj_ic, int index_pos)
+static int find_relative_key_frame(Index *key_frame, SJ_IndexContext sj_ic, int64_t index_pos)
 {
     // if the next I_frame has a dts inferior to the searched dts then this I_frame is the related key_frame 
-    for (int i = index_pos; i < sj_ic.index_num; i++){
+    for (int64_t i = index_pos; i < sj_ic.index_num; i++){
         if (sj_ic.indexes[i].pic_type == FF_I_TYPE && sj_ic.indexes[i].dts < sj_ic.indexes[index_pos].dts) {
             *key_frame = sj_ic.indexes[i];
             return 0;
         }
     }
     // otherwise, look before the searched frame
-    for (int i = index_pos; i >= 0; i--) {
+    for (int64_t i = index_pos; i >= 0; i--) {
         if (sj_ic.indexes[i].pic_type == FF_I_TYPE) {
             *key_frame = sj_ic.indexes[i];
             return 0;
@@ -161,7 +161,7 @@ int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_time, Index *idx, In
         return -4;  // invalid flag value
     }
 
-    int pos = search_frame(sj_ic, idx, search_time, mode);
+    int64_t pos = search_frame(sj_ic, idx, search_time, mode);
     if (mode == SJ_INDEX_DTS_SEARCH) {
         if (idx->pts != idx->dts && idx->dts != search_time) {
             pos = search_frame_dts(sj_ic, idx, search_time, pos);

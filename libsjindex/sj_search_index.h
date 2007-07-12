@@ -14,7 +14,7 @@
 typedef struct {
     uint64_t size; /// size of the input index file
     uint8_t version; /// version number of the index file
-    uint64_t index_num; /// number of indexes in the file
+    int64_t index_num; /// number of indexes in the file
     Index *indexes; /// list of indexes read from the file
     char *filename; /// index file name
 } SJ_IndexContext;
