@@ -118,7 +118,7 @@ static int search_frame(SJ_IndexContext *sj_ic, Index *read_idx)
 static int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx)
 {
     // looks for the frame that has the dts we're looking for, it's located after the frame with that value as pts
-    for (int i = index_pos; i < sj_ic->index_num; i++) {
+    for (uint64_t i = index_pos; i < sj_ic->index_num; i++) {
         if (sj_ic->indexes[i].dts == search_time) {
             *read_idx = sj_ic->indexes[i];
             index_pos = i;
@@ -131,14 +131,14 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx)
 static int find_relative_key_frame(Index *key_frame, SJ_IndexContext sj_ic)
 {
     // if the next I_frame has a dts inferior to the searched dts then this I_frame is the related key_frame 
-    for (int i = index_pos; i < sj_ic.index_num; i++){
+    for (uint64_t i = index_pos; i < sj_ic.index_num; i++){
         if (sj_ic.indexes[i].pic_type == FF_I_TYPE && sj_ic.indexes[i].dts < sj_ic.indexes[index_pos].dts) {
             *key_frame = sj_ic.indexes[i];
             return 0;
         }
     }
     // otherwise, look before the searched frame
-    for (int i = index_pos; i >= 0; i--) {
+    for (uint64_t i = index_pos; i >= 0; i--) {
         if (sj_ic.indexes[i].pic_type == FF_I_TYPE) {
             *key_frame = sj_ic.indexes[i];
             return 0;
