@@ -64,7 +64,7 @@ int sj_index_unload(SJ_IndexContext *sj_ic)
     return 0;
 }
 
-static uint64_t get_search_value(Index idx, int mode)
+static av_always_inline uint64_t get_search_value(Index idx, int mode)
 {
     if (mode == SJ_INDEX_TIMECODE_SEARCH) {
         return idx.timecode.hours * 1000000 + idx.timecode.minutes * 10000 + idx.timecode.seconds * 100 + idx.timecode.frames;
