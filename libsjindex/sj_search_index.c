@@ -69,46 +69,13 @@ static av_always_inline uint64_t get_search_value(Index idx, int mode)
     if (mode == SJ_INDEX_TIMECODE_SEARCH) {
         return idx.timecode.hours * 1000000 + idx.timecode.minutes * 10000 + idx.timecode.seconds * 100 + idx.timecode.frames;
     }
-    else {
+    else if (mode == SJ_INDEX_PTS_SEARCH){
         return idx.pts;
     }
+    else {
+        return idx.dts;
+    }
     return 0;
-}
-
-static int search_frame(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t search_time, int mode)
-{
-    int high = sj_ic->index_num;
-    int low = 0;
-    int mid = high / 2;
-
-    uint64_t read_time = 0; // used to store the timecode members in a single 64 bits integer to facilitate comparison
-
-    while (low <= high) {
-        mid = (int)((high + low) / 2);
-        read_time = get_search_value(sj_ic->indexes[mid], mode);
-
-        if (read_time == search_time) {
-            *read_idx = sj_ic->indexes[mid];
-            return mid;
-        } else if (read_time > search_time) {
-            high = mid - 1;
-        } else if (read_time < search_time) {
-            low = mid + 1;
-        }
-    }
-    return -2;
-}
-
-static int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t search_time, int index_pos)
-{
-    // looks for the frame that has the dts we're looking for, it's located after the frame with that value as pts
-    for (int i = index_pos; i < sj_ic->index_num; i++) {
-        if (sj_ic->indexes[i].dts == search_time) {
-            *read_idx = sj_ic->indexes[i];
-            return index_pos;
-        }
-    }
-    return -2;
 }
 
 static int find_relative_key_frame(Index *key_frame, SJ_IndexContext sj_ic, int index_pos)
@@ -130,6 +97,75 @@ static int find_relative_key_frame(Index *key_frame, SJ_IndexContext sj_ic, int 
     return 0;
 }
 
+static int search_frame(SJ_IndexContext *sj_ic, Index *key_frame, Index *read_idx, uint64_t search_time, int mode)
+{
+    int high = sj_ic->index_num;
+    int low = 0;
+    int mid = high / 2;
+
+    uint64_t read_time = 0; // used to store the timecode members in a single 64 bits integer to facilitate comparison
+
+    while (low <= high) {
+        mid = (int)((high + low) / 2);
+        read_time = get_search_value(sj_ic->indexes[mid], mode);
+
+        if (read_time == search_time) {
+            *read_idx = sj_ic->indexes[mid];
+            find_relative_key_frame(key_frame, *sj_ic, mid);
+            return mid;
+        } else if (read_time > search_time) {
+            high = mid - 1;
+        } else if (read_time < search_time) {
+            low = mid + 1;
+        }
+    }
+    return -2;
+}
+
+static av_always_inline int find_previous_key_frame(SJ_IndexContext sj_ic, int pos)
+{
+    int i;
+    for (i = pos; sj_ic.indexes[i].pic_type == 3 && i >= 0; i--);
+    return i;
+}
+
+static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *read_idx, uint64_t search_time)
+{
+    int high = sj_ic->index_num;
+    int low = 0;
+    int mid = high / 2;
+
+    uint64_t read_time = 0; // used to store the timecode members in a single 64 bits integer to facilitate comparison
+
+/*    while (low <= high) {
+        mid = (int)((high + low) / 2);
+        printf("low : %d\thigh : %d\tmid : %d\n", low, high, mid);
+        int pos = find_previous_key_frame(*sj_ic, mid);
+        printf("pos : %d\n", pos);
+        int i;
+        if (search_time < sj_ic->indexes[pos].dts) {
+            high = pos - 1;
+        } else { 
+            for (i = pos; i < sj_ic->index_num; i++) {
+                read_time = get_search_value(sj_ic->indexes[i], SJ_INDEX_DTS_SEARCH);
+                printf("search_time : %lld\tread_time : %lld\n", search_time, read_time);
+                if (read_time == search_time) {
+                    *read_idx = sj_ic->indexes[i];
+                    find_relative_key_frame(key_frame, *sj_ic, i);
+                    return pos;
+                }
+                if (sj_ic->indexes[i].pic_type != FF_B_TYPE) {
+                    break;
+                }
+            }
+            if (search_time > sj_ic->indexes[i].dts) {
+                low = pos + 1;
+            }
+        }
+    }*/
+    return -2;
+}
+
 char sj_index_get_frame_type(Index idx)
 {
     char frame_types[3] = {'I','P','B'};
@@ -144,15 +180,11 @@ int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_time, Index *idx, In
     if (mode != SJ_INDEX_TIMECODE_SEARCH && mode != SJ_INDEX_PTS_SEARCH && mode != SJ_INDEX_DTS_SEARCH) {
         return -4;  // invalid flag value
     }
-
-    int pos = search_frame(sj_ic, idx, search_time, mode);
-    if (mode == SJ_INDEX_DTS_SEARCH) {
-        if (idx->pts != idx->dts && idx->dts != search_time) {
-            pos = search_frame_dts(sj_ic, idx, search_time, pos);
-        }
-    }
-    if (idx->pic_type != FF_I_TYPE && pos >= 0) {
-        find_relative_key_frame(key_frame, *sj_ic, pos);
+    int pos;
+    if (mode != SJ_INDEX_DTS_SEARCH) {
+        pos = search_frame(sj_ic, key_frame, idx, search_time, mode);
+    } else {
+        pos = search_frame_dts(sj_ic, key_frame, idx, search_time);
     }
 
     return pos; // pos = 0 if frame wasn't found, -1 if the first value in the index is greater than the one we're looking for
