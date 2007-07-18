@@ -20,6 +20,7 @@ typedef struct {
     int index_num; /// number of indexes in the file
     Index *indexes; /// list of indexes read from the file
     char *filename; /// index file name
+    int first_I_frame; /// position in indexes of the first I frame
 } SJ_IndexContext;
 
 /**
