@@ -28,7 +28,6 @@ int sj_index_load(char *filename, SJ_IndexContext *sj_ic)
 {
     ByteIOContext pb;
     register_protocol(&file_protocol);
-    int need_first_dts = 1;
     
     if (url_fopen(&pb, filename, URL_RDONLY) < 0) {
         // file could not be open
@@ -53,11 +52,6 @@ int sj_index_load(char *filename, SJ_IndexContext *sj_ic)
 
     for(int i = 0; i < sj_ic->index_num; i++) {
         read_index(&sj_ic->indexes[i], &pb);
-        // looks for the first I frame and gets its dts and position in the index list
-        if (need_first_dts && sj_ic->indexes[i].pic_type == 1) {
-            sj_ic->first_I_frame = i;
-            need_first_dts = 0;
-        }
     } 
     url_fclose(&pb);
     return 0;
@@ -153,14 +147,6 @@ int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_time, Index *idx, In
 
     int pos = search_frame(sj_ic, idx, search_time, mode);
     if (mode == SJ_INDEX_DTS_SEARCH) {
-        // comparing the search_time to the first_I_frame's dts if nothing was found when search_frame was called
-        if (pos == -2) {
-            if (search_time == sj_ic->indexes[sj_ic->first_I_frame].dts) {
-                *idx = sj_ic->indexes[sj_ic->first_I_frame];
-                return sj_ic->first_I_frame;
-            }
-            return pos;
-        }
         if (idx->pts != idx->dts && idx->dts != search_time) {
             pos = search_frame_dts(sj_ic, idx, search_time, pos);
         }
