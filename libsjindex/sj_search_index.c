@@ -154,9 +154,12 @@ int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_time, Index *idx, In
     int pos = search_frame(sj_ic, idx, search_time, mode);
     if (mode == SJ_INDEX_DTS_SEARCH) {
         // comparing the search_time to the first_I_frame's dts if nothing was found when search_frame was called
-        if (pos == -2 && search_time == sj_ic->indexes[sj_ic->first_I_frame].dts) { 
-            *idx = sj_ic->indexes[sj_ic->first_I_frame];
-            return sj_ic->first_I_frame;
+        if (pos == -2) {
+            if (search_time == sj_ic->indexes[sj_ic->first_I_frame].dts) {
+                *idx = sj_ic->indexes[sj_ic->first_I_frame];
+                return sj_ic->first_I_frame;
+            }
+            return pos;
         }
         if (idx->pts != idx->dts && idx->dts != search_time) {
             pos = search_frame_dts(sj_ic, idx, search_time, pos);
