@@ -143,25 +143,25 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
         }
         pos = find_previous_key_frame(*sj_ic, mid);
         int i;
-            for (i = pos; i < sj_ic->index_num; i++) {
-                if (sj_ic->indexes[i].dts == search_time) {
-                    *read_idx = sj_ic->indexes[i];
-                    find_relative_key_frame(key_frame, *sj_ic, i);
-                    return pos;
-                }
-                if (sj_ic->indexes[i+1].pic_type != FF_B_TYPE) {
-                    break;
-                }
+        for (i = pos; i < sj_ic->index_num; i++) {
+            if (sj_ic->indexes[i].dts == search_time) {
+                *read_idx = sj_ic->indexes[i];
+                find_relative_key_frame(key_frame, *sj_ic, i);
+                return pos;
             }
-            if (search_time > sj_ic->indexes[i + 1].dts) {
-                low = pos + 1;
-            } else if (search_time == sj_ic->indexes[i + 1].dts) {
-                *read_idx = sj_ic->indexes[i + 1];
-                find_relative_key_frame(key_frame, *sj_ic, i+1);
-                return i + 1;
-            } else {
-                high = pos - 1;
+            if (sj_ic->indexes[i+1].pic_type != FF_B_TYPE) {
+                break;
             }
+        }
+        if (search_time > sj_ic->indexes[i + 1].dts) {
+            low = pos + 1;
+        } else if (search_time == sj_ic->indexes[i + 1].dts) {
+            *read_idx = sj_ic->indexes[i + 1];
+            find_relative_key_frame(key_frame, *sj_ic, i+1);
+            return i + 1;
+        } else {
+            high = pos - 1;
+        }
     }
     return -2;
 }
