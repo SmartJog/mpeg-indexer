@@ -125,7 +125,7 @@ static int search_frame(SJ_IndexContext *sj_ic, Index *key_frame, Index *read_id
 static av_always_inline int find_previous_key_frame(SJ_IndexContext sj_ic, int pos)
 {
     int i;
-    for (i = pos; sj_ic.indexes[i].pic_type == 3 && i >= 0; i--);
+    for (i = pos; sj_ic.indexes[i].pic_type == 3 && i > 0; i--);
     return i;
 }
 
