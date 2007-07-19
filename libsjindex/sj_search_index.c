@@ -149,7 +149,7 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
                 find_relative_key_frame(key_frame, *sj_ic, i);
                 return pos;
             }
-            if (sj_ic->indexes[i+1].pic_type != FF_B_TYPE) {
+            if (sj_ic->indexes[i + 1].pic_type != FF_B_TYPE) {
                 break;
             }
         }
