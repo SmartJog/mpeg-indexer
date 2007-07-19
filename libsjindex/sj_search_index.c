@@ -139,9 +139,6 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
         mid = (int)((high + low) / 2);
         int pos = find_previous_key_frame(*sj_ic, mid);
         int i;
-        if (search_time < sj_ic->indexes[pos].dts) {
-            high = pos - 1;
-        } else { 
             for (i = pos; i < sj_ic->index_num; i++) {
                 if (sj_ic->indexes[i].dts == search_time) {
                     *read_idx = sj_ic->indexes[i];
@@ -161,7 +158,6 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
             } else {
                 high = pos - 1;
             }
-        }
     }
     return -2;
 }
