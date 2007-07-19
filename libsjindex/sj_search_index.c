@@ -135,7 +135,7 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
     int high = sj_ic->index_num;
     int low = 0;
     int mid = high / 2;
-    int pos = -1;
+    int pos = -2;
 
     while (1) {
         mid = (int)((high + low) / 2);
