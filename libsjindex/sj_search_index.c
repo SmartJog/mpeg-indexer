@@ -152,12 +152,15 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
                 return i;
             }
         }
-        if (search_time > sj_ic->indexes[i].dts) {
-            low = pos + 1;
-        } else if (search_time == sj_ic->indexes[i].dts) {
+        // the dts wasn't found in the set of B frames -> testing if it is in the key_frame that follows
+        if (search_time == sj_ic->indexes[i].dts) {
             *read_idx = sj_ic->indexes[i];
             find_relative_key_frame(key_frame, *sj_ic, i);
             return i;
+        }
+
+        if (search_time > sj_ic->indexes[i].dts) {
+            low = pos + 1;
         } else {
             high = pos - 1;
         }
