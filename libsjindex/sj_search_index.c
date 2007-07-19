@@ -135,8 +135,6 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
     int low = 0;
     int mid = high / 2;
 
-    uint64_t read_time = 0; // used to store the timecode members in a single 64 bits integer to facilitate comparison
-
     while (low <= high - 1) {
         mid = (int)((high + low) / 2);
         int pos = find_previous_key_frame(*sj_ic, mid);
@@ -145,8 +143,7 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
             high = pos - 1;
         } else { 
             for (i = pos; i < sj_ic->index_num; i++) {
-                read_time = get_search_value(sj_ic->indexes[i], SJ_INDEX_DTS_SEARCH);
-                if (read_time == search_time) {
+                if (sj_ic->indexes[i].dts == search_time) {
                     *read_idx = sj_ic->indexes[i];
                     find_relative_key_frame(key_frame, *sj_ic, i);
                     return pos;
