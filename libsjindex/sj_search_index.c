@@ -134,10 +134,14 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
     int high = sj_ic->index_num;
     int low = 0;
     int mid = high / 2;
+    int pos = -1;
 
-    while (low <= high - 1) {
+    while (1) {
         mid = (int)((high + low) / 2);
-        int pos = find_previous_key_frame(*sj_ic, mid);
+        if (pos == find_previous_key_frame(*sj_ic, mid)) {
+            return -2;
+        }
+        pos = find_previous_key_frame(*sj_ic, mid);
         int i;
             for (i = pos; i < sj_ic->index_num; i++) {
                 if (sj_ic->indexes[i].dts == search_time) {
