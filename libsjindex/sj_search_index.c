@@ -137,7 +137,7 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
 
     uint64_t read_time = 0; // used to store the timecode members in a single 64 bits integer to facilitate comparison
 
-    while (low <= high) {
+    while (low <= high - 1) {
         mid = (int)((high + low) / 2);
 //        printf("low : %d\thigh : %d\tmid : %d\n", low, high, mid);
         int pos = find_previous_key_frame(*sj_ic, mid);
