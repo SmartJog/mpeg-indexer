@@ -111,7 +111,8 @@ static int search_frame(SJ_IndexContext *sj_ic, Index *key_frame, Index *read_id
 
         if (read_time == search_time) {
             *read_idx = sj_ic->indexes[mid];
-            find_relative_key_frame(key_frame, *sj_ic, mid);
+            if (read_idx->pic_type != FF_I_TYPE)
+                find_relative_key_frame(key_frame, *sj_ic, mid);
             return mid;
         } else if (read_time > search_time) {
             high = mid - 1;
@@ -148,14 +149,16 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
         for (i = pos + 1; i < sj_ic->index_num && sj_ic->indexes[i].pic_type == FF_B_TYPE; i++) {
             if (sj_ic->indexes[i].dts == search_time) {
                 *read_idx = sj_ic->indexes[i];
-                find_relative_key_frame(key_frame, *sj_ic, i);
+                if (read_idx->pic_type != FF_I_TYPE)
+                    find_relative_key_frame(key_frame, *sj_ic, i);
                 return i;
             }
         }
         // the dts wasn't found in the set of B frames -> testing if it is in the key_frame that follows
         if (search_time == sj_ic->indexes[i].dts) {
             *read_idx = sj_ic->indexes[i];
-            find_relative_key_frame(key_frame, *sj_ic, i);
+            if (read_idx->pic_type != FF_I_TYPE)
+                find_relative_key_frame(key_frame, *sj_ic, i);
             return i;
         }
 
