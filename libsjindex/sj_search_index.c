@@ -122,6 +122,7 @@ static int search_frame(SJ_IndexContext *sj_ic, Index *key_frame, Index *read_id
     return -2;
 }
 
+// if there are no P or I frame before pos, function returns 0 (which is the position of the first index)
 static av_always_inline int find_previous_key_frame(SJ_IndexContext sj_ic, int pos)
 {
     int i;
@@ -138,6 +139,7 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
 
     while (1) {
         mid = (int)((high + low) / 2);
+        // if the same position is returned twice, then no matching index can be found 
         if (pos == find_previous_key_frame(*sj_ic, mid)) {
             return -2;
         }
@@ -149,7 +151,7 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
                 find_relative_key_frame(key_frame, *sj_ic, i);
                 return pos;
             }
-            if (sj_ic->indexes[i + 1].pic_type != FF_B_TYPE) {
+            if (sj_ic->indexes[i + 1].pic_type != FF_B_TYPE) { // exit loop when a non B-frame is found
                 break;
             }
         }
