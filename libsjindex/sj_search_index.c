@@ -122,12 +122,12 @@ static int search_frame(SJ_IndexContext *sj_ic, Index *key_frame, Index *read_id
     return -2;
 }
 
-// if there are no P or I frame before pos, function returns 0 (which is the position of the first index)
+// if there are no P or I frame before pos, function returns -1 
 static av_always_inline int find_previous_key_frame(SJ_IndexContext sj_ic, int pos)
 {
     int i;
     for (i = pos; sj_ic.indexes[i].pic_type == FF_B_TYPE && i > 0; i--);
-    return i;
+    return i ? i : -1;
 }
 
 static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *read_idx, uint64_t search_time)
@@ -145,22 +145,19 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
         }
         pos = find_previous_key_frame(*sj_ic, mid);
         int i;
-        for (i = pos; i < sj_ic->index_num; i++) {
+        for (i = pos + 1; i < sj_ic->index_num && sj_ic->indexes[i].pic_type == FF_B_TYPE; i++) {
             if (sj_ic->indexes[i].dts == search_time) {
                 *read_idx = sj_ic->indexes[i];
                 find_relative_key_frame(key_frame, *sj_ic, i);
-                return pos;
-            }
-            if (sj_ic->indexes[i + 1].pic_type != FF_B_TYPE) { // exit loop when a non B-frame is found
-                break;
+                return i;
             }
         }
-        if (search_time > sj_ic->indexes[i + 1].dts) {
+        if (search_time > sj_ic->indexes[i].dts) {
             low = pos + 1;
-        } else if (search_time == sj_ic->indexes[i + 1].dts) {
-            *read_idx = sj_ic->indexes[i + 1];
-            find_relative_key_frame(key_frame, *sj_ic, i+1);
-            return i + 1;
+        } else if (search_time == sj_ic->indexes[i].dts) {
+            *read_idx = sj_ic->indexes[i];
+            find_relative_key_frame(key_frame, *sj_ic, i);
+            return i;
         } else {
             high = pos - 1;
         }
