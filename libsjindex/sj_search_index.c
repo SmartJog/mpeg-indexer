@@ -139,27 +139,22 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
 
     while (low <= high - 1) {
         mid = (int)((high + low) / 2);
-//        printf("low : %d\thigh : %d\tmid : %d\n", low, high, mid);
         int pos = find_previous_key_frame(*sj_ic, mid);
-//        printf("pos : %d\n", pos);
         int i;
         if (search_time < sj_ic->indexes[pos].dts) {
             high = pos - 1;
         } else { 
             for (i = pos; i < sj_ic->index_num; i++) {
                 read_time = get_search_value(sj_ic->indexes[i], SJ_INDEX_DTS_SEARCH);
-//                printf("search_time : %lld\tread_time : %lld\n", search_time, read_time);
                 if (read_time == search_time) {
                     *read_idx = sj_ic->indexes[i];
                     find_relative_key_frame(key_frame, *sj_ic, i);
                     return pos;
                 }
-//                printf("type : %d\n", sj_ic->indexes[i].pic_type);
                 if (sj_ic->indexes[i+1].pic_type != FF_B_TYPE) {
                     break;
                 }
             }
-//            printf("i + 1 : %d\n", i+1);
             if (search_time > sj_ic->indexes[i + 1].dts) {
                 low = pos + 1;
             } else if (search_time == sj_ic->indexes[i + 1].dts) {
