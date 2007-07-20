@@ -97,7 +97,7 @@ static int find_relative_key_frame(Index *key_frame, SJ_IndexContext sj_ic, int 
     return 0;
 }
 
-static int search_frame(SJ_IndexContext *sj_ic, Index *key_frame, Index *read_idx, uint64_t search_time, int mode)
+static int search_frame(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t search_time, int mode)
 {
     int high = sj_ic->index_num;
     int low = 0;
@@ -111,8 +111,6 @@ static int search_frame(SJ_IndexContext *sj_ic, Index *key_frame, Index *read_id
 
         if (read_time == search_time) {
             *read_idx = sj_ic->indexes[mid];
-            if (read_idx->pic_type != FF_I_TYPE)
-                find_relative_key_frame(key_frame, *sj_ic, mid);
             return mid;
         } else if (read_time > search_time) {
             high = mid - 1;
@@ -131,7 +129,7 @@ static av_always_inline int find_previous_key_frame(SJ_IndexContext sj_ic, int p
     return i ? i : -1;
 }
 
-static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *read_idx, uint64_t search_time)
+static int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t search_time)
 {
     int high = sj_ic->index_num;
     int low = 0;
@@ -150,8 +148,6 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
             if (sj_ic->indexes[i].dts == search_time) {
                 loop:
                 *read_idx = sj_ic->indexes[i];
-                if (read_idx->pic_type != FF_I_TYPE)
-                    find_relative_key_frame(key_frame, *sj_ic, i);
                 return i;
             }
         }
@@ -185,11 +181,12 @@ int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_time, Index *idx, In
     }
     int pos;
     if (mode != SJ_INDEX_DTS_SEARCH) {
-        pos = search_frame(sj_ic, key_frame, idx, search_time, mode);
+        pos = search_frame(sj_ic, idx, search_time, mode);
     } else {
-        pos = search_frame_dts(sj_ic, key_frame, idx, search_time);
+        pos = search_frame_dts(sj_ic, idx, search_time);
     }
-
+    if (idx->pic_type != FF_I_TYPE)
+        find_relative_key_frame(key_frame, *sj_ic, pos);
     return pos; // pos = 0 if frame wasn't found, -1 if the first value in the index is greater than the one we're looking for
 }
 
