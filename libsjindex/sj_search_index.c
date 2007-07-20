@@ -101,7 +101,7 @@ static int search_frame(SJ_IndexContext *sj_ic, Index *key_frame, Index *read_id
 {
     int high = sj_ic->index_num;
     int low = 0;
-    int mid = high / 2;
+    int mid;
 
     uint64_t read_time = 0; // used to store the timecode members in a single 64 bits integer to facilitate comparison
 
@@ -135,7 +135,7 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *key_frame, Index *rea
 {
     int high = sj_ic->index_num;
     int low = 0;
-    int mid = high / 2;
+    int mid;
     int pos = -2; // pos initialized with a value that won't be returned by find_previous_key_frame
 
     while (1) {
