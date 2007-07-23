@@ -72,10 +72,10 @@ static av_always_inline uint64_t get_search_value(Index idx, int mode)
     else if (mode == SJ_INDEX_PTS_SEARCH){
         return idx.pts;
     }
-    else {
+    else if (mode == SJ_INDEX_DTS_SEARCH){
         return idx.dts;
     }
-    return 0;
+    return -1; // invalid search mode
 }
 
 static int find_relative_key_frame(Index *key_frame, SJ_IndexContext sj_ic, int index_pos)
