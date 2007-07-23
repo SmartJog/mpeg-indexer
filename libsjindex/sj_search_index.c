@@ -78,7 +78,7 @@ static av_always_inline uint64_t get_search_value(Index idx, int mode)
     return -1; // invalid search mode
 }
 
-static int find_relative_key_frame(Index *key_frame, SJ_IndexContext sj_ic, int index_pos)
+static int find_I_frame(Index *key_frame, SJ_IndexContext sj_ic, int index_pos)
 {
     // if the next I_frame has a dts inferior to the searched dts then this I_frame is the related key_frame 
     for (int i = index_pos; i < sj_ic.index_num; i++){
@@ -186,7 +186,7 @@ int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_time, Index *idx, In
         pos = search_frame_dts(sj_ic, idx, search_time);
     }
     if (idx->pic_type != FF_I_TYPE && pos >= 0) {
-        find_relative_key_frame(key_frame, *sj_ic, pos);
+        find_I_frame(key_frame, *sj_ic, pos);
     }
     return pos; // pos = -2 if frame wasn't found
 }
