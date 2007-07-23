@@ -138,11 +138,12 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t se
 
     while (1) {
         mid = (high + low) / 2;
+        int kf_pos = find_previous_key_frame(*sj_ic, mid);
         // if the same position is returned twice, then no matching index can be found 
-        if (pos == find_previous_key_frame(*sj_ic, mid)) {
+        if (pos == kf_pos) {
             return -2;
         }
-        pos = find_previous_key_frame(*sj_ic, mid);
+        pos = kf_pos;
         int i;
         for (i = pos + 1; i < sj_ic->index_num && sj_ic->indexes[i].pic_type == FF_B_TYPE; i++) {
             if (sj_ic->indexes[i].dts == search_time) {
