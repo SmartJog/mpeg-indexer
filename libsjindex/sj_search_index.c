@@ -34,7 +34,7 @@ int sj_index_load(char *filename, SJ_IndexContext *sj_ic)
         return -1;
     }
     sj_ic->size = url_fsize(&pb) - HEADER_SIZE;
-    sj_ic->index_num = (int)(sj_ic->size / INDEX_SIZE);
+    sj_ic->index_num = (sj_ic->size / INDEX_SIZE);
     sj_ic->indexes = av_malloc(sj_ic->index_num * sizeof(Index));
 
     int64_t magic = get_le64(&pb);
