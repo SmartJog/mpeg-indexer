@@ -152,7 +152,7 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t se
             }
         }
         // the dts wasn't found in the set of B frames -> testing if it is in the key_frame that follows
-        if (search_time == sj_ic->indexes[i].dts) {
+        if (sj_ic->indexes[i].dts == search_time) {
             goto loop;
         }
 
