@@ -118,7 +118,7 @@ static int search_frame(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t search
             low = mid + 1;
         }
     }
-    return -2;
+    return -1;
 }
 
 // if there are no P or I frame before pos, function returns -1 
@@ -163,7 +163,7 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t se
             high = pos - 1;
         }
     }
-    return -2;
+    return -1;
 }
 
 char sj_index_get_frame_type(Index idx)
@@ -189,6 +189,6 @@ int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_time, Index *idx, In
     if (idx->pic_type != FF_I_TYPE && pos >= 0) {
         find_I_frame(key_frame, *sj_ic, pos);
     }
-    return pos; // pos = -2 if frame wasn't found
+    return pos; // pos = -1 if frame wasn't found
 }
 
