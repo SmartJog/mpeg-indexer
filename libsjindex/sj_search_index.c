@@ -188,6 +188,6 @@ int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_time, Index *idx, In
     if (idx->pic_type != FF_I_TYPE && pos >= 0) {
         find_relative_key_frame(key_frame, *sj_ic, pos);
     }
-    return pos; // pos = 0 if frame wasn't found, -1 if the first value in the index is greater than the one we're looking for
+    return pos; // pos = -2 if frame wasn't found
 }
 
