@@ -191,9 +191,11 @@ static int calculate_pts_from_dts(StreamContext *stc)
         while (j < stc->frame_num && stc->index[j].pic_type == 3)
             j++;
     }
-    if (stc->index[stc->frame_num - 2].pic_type != 3 && stc->index[stc->frame_num - 1 ].pic_type == 3)
-        stc->index[stc->frame_num - 2].pts = stc->index[stc->frame_num - 1 ].dts + stc->frame_duration;
-
+    // the last I frame will not get a pts from another frame's dts unless its pts was the transport's package pts
+    // in other words if the last I frame's pts is equal to the one just before then it needs to be incremented
+    if (stc->index[i].pts == stc->index[i - 1].pts) {
+        stc->index[i].pts += stc->frame_duration;
+    }
     return 0;
 }
 
