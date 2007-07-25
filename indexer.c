@@ -42,10 +42,11 @@ static int idx_sort_by_pts(const void *idx1, const void *idx2)
     return ((Index *)idx1)->pts - ((Index *)idx2)->pts;
 }
 
-static int idx_sort_by_time(const void *idx1, const void *idx2)
+/*static int idx_sort_by_time(const void *idx1, const void *idx2)
 {
     return (((Index *)idx1)->timecode.hours * 1000000 + ((Index *)idx1)->timecode.minutes * 10000 + ((Index *)idx1)->timecode.seconds * 100 + ((Index *)idx1)->timecode.frames) - (((Index *)idx2)->timecode.hours * 1000000 + ((Index *)idx2)->timecode.minutes * 10000 + ((Index *)idx2)->timecode.seconds * 100 + ((Index *)idx2)->timecode.frames);
-}
+}*/
+
 extern AVInputFormat mpegps_demuxer;
 extern AVCodec       mpegvideo_decoder;
 
@@ -192,23 +193,7 @@ static int calculate_pts_from_dts(StreamContext *stc)
     }
     if (stc->index[stc->frame_num - 2].pic_type != 3 && stc->index[stc->frame_num - 1 ].pic_type == 3)
         stc->index[stc->frame_num - 2].pts = stc->index[stc->frame_num - 1 ].dts + stc->frame_duration;
-/*    int i = 0;
-    while (i < stc->frame_num) {
-        if (stc->index[i].pts == 0) {
-            if (stc->index[i].pic_type == 3) {
-                stc->index[i].pts = stc->index[i].dts;
-            } else {
-                int j;
-                for (j = i; j < stc->frame_num && stc->index[j].pic_type == 3; j++);
-                if (stc->index[j].pic_type != 3){
-                    stc->index[i].pts = stc->index[j].dts;
-                }
-            }
-        }
-        i++;
-    }
-    if (stc->index[stc->frame_num - 2].pic_type != 3 && stc->index[stc->frame_num - 1 ].pic_type == 3)
-        stc->index[stc->frame_num - 2].pts = stc->index[stc->frame_num - 1 ].dts + stc->frame_duration;*/
+
     return 0;
 }
 
