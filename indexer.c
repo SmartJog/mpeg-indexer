@@ -115,7 +115,7 @@ static av_always_inline int idx_set_timestamps(StreamContext *stc, Index *idx, A
     if (oldidx){
         if (idx->dts <= oldidx->dts) {
             idx->dts = oldidx->dts + stc->frame_duration;
-//            idx->pts = oldidx->dts + stc->frame_duration;
+            idx->pts = oldidx->dts + stc->frame_duration;
 //            printf("adjusting dts %lld -> %lld\n", stc->current_dts, idx->dts);
         }
     }
