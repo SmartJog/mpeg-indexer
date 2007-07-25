@@ -21,6 +21,7 @@ typedef struct {
     int gop_num;
     int fps;
     uint8_t drop_mode;
+    int timecode_generate;
 } TimeContext;
 
 typedef struct {
@@ -122,7 +123,13 @@ static av_always_inline int idx_set_timestamps(StreamContext *stc, Index *idx, A
     return 0;
 }
 #define BUFFER_SIZE 262144
+static int check_timecode_presence(TimeContext *tc)
+{
+    if (!tc->gop_time.hours && !tc->gop_time.minutes && !tc->gop_time.seconds && !tc->gop_time.frames)
+        tc->timecode_generate = 1;
 
+    return 0;
+}
 static int parse_gop_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
 {
     tc->drop_mode = !!(buf[0] & 0x80);
@@ -268,6 +275,7 @@ int main(int argc, char *argv[])
 
     stcontext.index = av_malloc(1000 * sizeof(Index));
     printf("creating index\n");
+    int count_gop = 0;
     while (1) {
         ret = av_read_packet(ic, &pkt);
         if (ret < 0)
@@ -293,7 +301,9 @@ int main(int argc, char *argv[])
             if (stcontext.need_gop) {
                 memcpy(data_buf + 4 - stcontext.need_gop, pkt.data, stcontext.need_gop);
                 parse_gop_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf);
-                stcontext.need_gop = 0;
+                if (count_gop == 2)
+                    check_timecode_presence(&tc);
+               stcontext.need_gop = 0;
             }
             for (i = 0; i < pkt.size; i++) {
                 Index *idx = &stcontext.index[stcontext.frame_num];
@@ -302,9 +312,12 @@ int main(int argc, char *argv[])
                     int bytes = FFMIN(pkt.size - i - 1, 4);
                     memcpy(data_buf, pkt.data + i + 1, bytes);
                     stcontext.need_gop = 4 - bytes;
-
-                    if (!stcontext.need_gop)
+                    count_gop++;
+                    if (!stcontext.need_gop) {
                         parse_gop_timecode(idx, &tc, data_buf);
+                        if (count_gop == 2)
+                            check_timecode_presence(&tc);
+                    }
                 } else if (state == PICTURE_START_CODE) {
                     int bytes = FFMIN(pkt.size - i - 1, 2);
                     memcpy(data_buf, pkt.data + i + 1, bytes);
