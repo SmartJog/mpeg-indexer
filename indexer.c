@@ -237,7 +237,6 @@ int main(int argc, char *argv[])
     memset(&stcontext, 0, sizeof(stcontext));
     memset(&tc, 0, sizeof(tc));
 
-    stcontext.start_pts = 1000000000;
     uint8_t data_buf[8]; // used to store bits when data is divided in two packets
 
     if (argc < 3) {
@@ -286,6 +285,7 @@ int main(int argc, char *argv[])
     stcontext.frame_duration = av_rescale(1, 90000, tc.fps);
     stcontext.fc = ic;
 
+    stcontext.start_pts = 1000000000;
     stcontext.start_timecode.hours = 23;
     stcontext.start_timecode.minutes = 59;
     stcontext.start_timecode.seconds = 59;
