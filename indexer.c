@@ -52,7 +52,6 @@ static int idx_sort_by_pts(const void *idx1, const void *idx2)
 
 static Timecode timecode_min(Timecode t1, Timecode t2)
 {
-
     return t1.hours * 1000000 + t1.minutes * 10000 + t1.seconds * 100 + t1.frames < t2.hours * 1000000 + t2.minutes * 10000 + t2.seconds * 100 + t2.frames ? t1 : t2 ;
 }
 
@@ -143,7 +142,6 @@ static int check_timecode_presence(TimeContext *tc)
         tc->timecode_generate = 1;
         printf("No timecode present in stream, generating timecode from 00:00:00:00\n");
     }
-
     return 0;
 }
 static int parse_gop_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
@@ -193,6 +191,7 @@ static int parse_pic_timecode(Index *idx, TimeContext *tc, Index *last_in_gop, u
         idx->timecode = tc->gop_time;
         idx->timecode.frames = tc->gop_time.frames + temp_ref;
     }
+
     adjust_timecode(idx, tc);
 
     if (tc->drop_mode && idx->timecode.minutes % 10 && idx->timecode.minutes != tc->gop_time.minutes) {
@@ -207,8 +206,8 @@ static int parse_pic_timecode(Index *idx, TimeContext *tc, Index *last_in_gop, u
 static int calculate_pts_from_dts(StreamContext *stc)
 {
     int i = 0, j = 1;
-    while (i < stc->frame_num && j < stc->frame_num){
-        if (stc->index[i].pic_type != 3 && stc->index[j].pic_type != 3){
+    while (i < stc->frame_num && j < stc->frame_num) {
+        if (stc->index[i].pic_type != 3 && stc->index[j].pic_type != 3) {
             stc->index[i].pts = stc->index[j].dts;
             stc->start_pts = FFMIN(stc->start_pts, stc->index[i].pts);
             stc->start_timecode = timecode_min(stc->start_timecode, stc->index[i].timecode); 
@@ -220,8 +219,9 @@ static int calculate_pts_from_dts(StreamContext *stc)
             stc->start_timecode = timecode_min(stc->start_timecode, stc->index[i].timecode); 
             i++;
         }
-        while (j < stc->frame_num && stc->index[j].pic_type == 3)
+        while (j < stc->frame_num && stc->index[j].pic_type == 3) {
             j++;
+        }
     }
     // the last I frame will not get a pts from another frame's dts unless its pts was the transport's package pts
     // in other words if the last I frame's pts is equal to the one just before then it needs to be incremented
