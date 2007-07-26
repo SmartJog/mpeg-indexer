@@ -152,15 +152,19 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t se
         }
         pos = kf_pos;
         int i;
-        for (i = pos + 1; i < sj_ic->index_num && sj_ic->indexes[i].pic_type == FF_B_TYPE; i++) {
+        for (i = pos; i < sj_ic->index_num ; i++) {
             if (sj_ic->indexes[i].dts == search_time) {
                 loop:
                 *read_idx = sj_ic->indexes[i];
                 return i;
             }
+            if (sj_ic->indexes[i+1].pic_type != FF_B_TYPE) {
+                break;
+            }
         }
         // the dts wasn't found in the set of B frames -> testing if it is in the key_frame that follows
-        if (sj_ic->indexes[i].dts == search_time) {
+        if (sj_ic->indexes[i+1].dts == search_time) {
+            i++;
             goto loop;
         }
 
