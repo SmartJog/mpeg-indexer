@@ -2,6 +2,12 @@ Index file specifications :
 Index file is wrttien in little endian
 Magic Number : 0x534A2D494E444558 (SJ-INDEX in hexadecimal) -> 64 bits
 Version      : 0x0000                                       -> 8 bits
+First presented frame PTS                                   -> 64 bits
+First decoded frame DTS                                     -> 64 bits
+First frame number                                          -> 8 bits
+First second number                                         -> 8 bits
+First minute number                                         -> 8 bits
+First hours number                                          -> 8 bits
 Index Data : 
         PTS                                                 -> 64 bits 
         DTS                                                 -> 64 bits
