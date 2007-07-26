@@ -35,7 +35,6 @@ typedef struct {
     int64_t current_pts;
     int64_t current_dts;
     int frame_duration;
-    int new_pts;
 } StreamContext;
 
 static int idx_sort_by_pts(const void *idx1, const void *idx2)
@@ -289,7 +288,6 @@ int main(int argc, char *argv[])
             if (pkt.dts != AV_NOPTS_VALUE) {
                 stcontext.current_dts = pkt.dts;
                 stcontext.current_pts = pkt.pts;
-                stcontext.new_pts = 1;
             }
             if (stcontext.need_pic) {
                 memcpy(data_buf + 2 - stcontext.need_pic, pkt.data, stcontext.need_pic);
