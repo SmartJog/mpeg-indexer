@@ -163,6 +163,24 @@ static av_always_inline int adjust_timecode(Index *idx, TimeContext *tc)
     return 0; 
 }
 
+static int generate_timecode(Index *idx, TimeContext *tc, Index *last_in_gop, uint8_t *buf)
+{
+    int temp_ref = (buf[0] << 2) | (buf[1] >> 6);
+    idx->pic_type = (buf[1] >> 3) & 0x07;
+
+    idx->timecode = last_in_gop->timecode;
+    idx->timecode.frames = last_in_gop->timecode.frames + temp_ref + 1;
+
+    adjust_timecode(idx, tc);
+
+    if (tc->drop_mode && idx->timecode.minutes % 10 && idx->timecode.minutes != tc->gop_time.minutes) {
+        printf ("dropping numbers 0 and 1 from timecode count\n");
+        idx->timecode.frames += 2;
+        adjust_timecode(idx, tc);
+    }
+    printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
+    return 0;
+}
 static int parse_pic_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
 {
     int temp_ref = (buf[0] << 2) | (buf[1] >> 6);
@@ -275,6 +293,7 @@ int main(int argc, char *argv[])
     stcontext.index = av_malloc(1000 * sizeof(Index));
     printf("creating index\n");
     int count_gop = 0;
+    Index *last_in_gop = NULL;
     while (1) {
         ret = av_read_packet(ic, &pkt);
         if (ret < 0)
@@ -291,7 +310,11 @@ int main(int argc, char *argv[])
             }
             if (stcontext.need_pic) {
                 memcpy(data_buf + 2 - stcontext.need_pic, pkt.data, stcontext.need_pic);
-                parse_pic_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf);
+                if (tc.timecode_generate) {
+                    generate_timecode(&stcontext.index[stcontext.frame_num-1], &tc, last_in_gop, data_buf);
+                } else {
+                    parse_pic_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf);
+                }
                 stcontext.need_pic = 0;
                 assert(stcontext.index[stcontext.frame_num-1].pic_type > 0 &&
                        stcontext.index[stcontext.frame_num-1].pic_type < 4);
@@ -308,6 +331,7 @@ int main(int argc, char *argv[])
                 Index *idx = &stcontext.index[stcontext.frame_num];
                 i = ff_find_start_code(pkt.data + i, pkt.data + pkt.size, &state) - pkt.data - 1;
                 if (state == GOP_START_CODE) {
+                    last_in_gop = &stcontext.index[stcontext.frame_num - 1];
                     int bytes = FFMIN(pkt.size - i - 1, 4);
                     memcpy(data_buf, pkt.data + i + 1, bytes);
                     stcontext.need_gop = 4 - bytes;
@@ -325,9 +349,13 @@ int main(int argc, char *argv[])
                     // check if startcode begins in last packet
                     idx->pes_offset = i < 3 ? last_pkt_offset : pkt_offset;
 
-                    if (!stcontext.need_pic)
-                        parse_pic_timecode(idx, &tc, data_buf);
-
+                    if (!stcontext.need_pic) {
+                        if (tc.timecode_generate) {
+                            generate_timecode(idx, &tc, last_in_gop, data_buf);
+                        } else {
+                            parse_pic_timecode(idx, &tc, data_buf);
+                        }
+                    }
                     idx_set_timestamps(&stcontext, idx, &pkt, st);
                     stcontext.frame_num++;
                     if (!(stcontext.frame_num % 1000)){
