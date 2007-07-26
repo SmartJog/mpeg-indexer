@@ -37,7 +37,7 @@ typedef struct {
     int frame_duration;
     int64_t start_dts;
     int64_t start_pts;
-    int64_t start_timecode;
+    Timecode start_timecode;
 } StreamContext;
 
 static int idx_sort_by_pts(const void *idx1, const void *idx2)
@@ -49,6 +49,12 @@ static int idx_sort_by_pts(const void *idx1, const void *idx2)
 {
     return (((Index *)idx1)->timecode.hours * 1000000 + ((Index *)idx1)->timecode.minutes * 10000 + ((Index *)idx1)->timecode.seconds * 100 + ((Index *)idx1)->timecode.frames) - (((Index *)idx2)->timecode.hours * 1000000 + ((Index *)idx2)->timecode.minutes * 10000 + ((Index *)idx2)->timecode.seconds * 100 + ((Index *)idx2)->timecode.frames);
 }*/
+
+static Timecode timecode_min(Timecode t1, Timecode t2)
+{
+
+    return t1.hours * 1000000 + t1.minutes * 10000 + t1.seconds * 100 + t1.frames < t2.hours * 1000000 + t2.minutes * 10000 + t2.seconds * 100 + t2.frames ? t1 : t2 ;
+}
 
 extern AVInputFormat mpegps_demuxer;
 extern AVCodec       mpegvideo_decoder;
@@ -197,11 +203,13 @@ static int calculate_pts_from_dts(StreamContext *stc)
         if (stc->index[i].pic_type != 3 && stc->index[j].pic_type != 3){
             stc->index[i].pts = stc->index[j].dts;
             stc->start_pts = FFMIN(stc->start_pts, stc->index[i].pts);
+            stc->start_timecode = timecode_min(stc->start_timecode, stc->index[i].timecode); 
             i++;
             j++;
         }
         while (i < stc->frame_num && stc->index[i].pic_type == 3) {
             stc->start_pts = FFMIN(stc->start_pts, stc->index[i].pts);
+            stc->start_timecode = timecode_min(stc->start_timecode, stc->index[i].timecode); 
             i++;
         }
         while (j < stc->frame_num && stc->index[j].pic_type == 3)
@@ -277,6 +285,11 @@ int main(int argc, char *argv[])
         / stcontext.video->codec->time_base.num + 0.5;
     stcontext.frame_duration = av_rescale(1, 90000, tc.fps);
     stcontext.fc = ic;
+
+    stcontext.start_timecode.hours = 23;
+    stcontext.start_timecode.minutes = 59;
+    stcontext.start_timecode.seconds = 59;
+    stcontext.start_timecode.frames = tc.fps - 1;
 
     if (url_fopen(&stcontext.opb, argv[2], URL_WRONLY) < 0) {
         printf("error opening outfile: %s\n", argv[2]);
