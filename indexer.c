@@ -298,7 +298,8 @@ int main(int argc, char *argv[])
             }
             if (stcontext.need_gop) {
                 memcpy(data_buf + 4 - stcontext.need_gop, pkt.data, stcontext.need_gop);
-                parse_gop_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf);
+                if (!tc.timecode_generate)
+                    parse_gop_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf);
                 if (count_gop == 2)
                     check_timecode_presence(&tc);
                stcontext.need_gop = 0;
@@ -311,7 +312,7 @@ int main(int argc, char *argv[])
                     memcpy(data_buf, pkt.data + i + 1, bytes);
                     stcontext.need_gop = 4 - bytes;
                     count_gop++;
-                    if (!stcontext.need_gop) {
+                    if (!stcontext.need_gop && !tc.timecode_generate) {
                         parse_gop_timecode(idx, &tc, data_buf);
                         if (count_gop == 2)
                             check_timecode_presence(&tc);
