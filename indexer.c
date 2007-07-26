@@ -206,11 +206,14 @@ static int calculate_pts_from_dts(StreamContext *stc)
     while (i < stc->frame_num && j < stc->frame_num){
         if (stc->index[i].pic_type != 3 && stc->index[j].pic_type != 3){
             stc->index[i].pts = stc->index[j].dts;
+            stc->start_pts = FFMIN(stc->start_pts, stc->index[i].pts);
             i++;
             j++;
         }
-        while (i < stc->frame_num && stc->index[i].pic_type == 3)
+        while (i < stc->frame_num && stc->index[i].pic_type == 3) {
+            stc->start_pts = FFMIN(stc->start_pts, stc->index[i].pts);
             i++;
+        }
         while (j < stc->frame_num && stc->index[j].pic_type == 3)
             j++;
     }
@@ -236,6 +239,7 @@ int main(int argc, char *argv[])
     memset(&stcontext, 0, sizeof(stcontext));
     memset(&tc, 0, sizeof(tc));
 
+    stcontext.start_pts = 1000000000;
     uint8_t data_buf[8]; // used to store bits when data is divided in two packets
 
     if (argc < 3) {
@@ -306,6 +310,9 @@ int main(int argc, char *argv[])
             if (pkt.dts != AV_NOPTS_VALUE) {
                 stcontext.current_dts = pkt.dts;
                 stcontext.current_pts = pkt.pts;
+            }
+            if (!stcontext.start_dts) {
+                stcontext.start_dts = stcontext.current_dts;
             }
             if (stcontext.need_pic) {
                 memcpy(data_buf + 2 - stcontext.need_pic, pkt.data, stcontext.need_pic);
