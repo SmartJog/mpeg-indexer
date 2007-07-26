@@ -18,6 +18,9 @@ typedef struct {
     uint64_t size; /// size of the input index file
     uint8_t version; /// version number of the index file
     int index_num; /// number of indexes in the file
+    int64_t start_dts; /// dts of the first frame to be decoded
+    int64_t start_pts; /// pts of the first frame to be displayed
+    Timecode start_timecode; /// timecode of the first frame to be displayed
     Index *indexes; /// list of indexes read from the file
     char *filename; /// index file name
 } SJ_IndexContext;

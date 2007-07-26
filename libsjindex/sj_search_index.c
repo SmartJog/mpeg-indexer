@@ -10,7 +10,7 @@
 #include "sj_search_index.h"
 
 #define INDEX_SIZE 29
-#define HEADER_SIZE 9
+#define HEADER_SIZE 29
 static av_always_inline int read_index(Index *read_idx, ByteIOContext *seek_pb)
 {
     read_idx->pts = get_le64(seek_pb);
@@ -44,6 +44,13 @@ int sj_index_load(char *filename, SJ_IndexContext *sj_ic)
         return -2;
     }
     sj_ic->version = get_byte(&pb);
+    sj_ic->start_pts = get_le64(&pb);
+    sj_ic->start_dts = get_le64(&pb);
+    sj_ic->start_timecode.frames = get_byte(&pb);
+    sj_ic->start_timecode.seconds = get_byte(&pb);
+    sj_ic->start_timecode.minutes = get_byte(&pb);
+    sj_ic->start_timecode.hours = get_byte(&pb);
+
     if (!sj_ic->index_num) {
         // empty index
         url_fclose(&pb);

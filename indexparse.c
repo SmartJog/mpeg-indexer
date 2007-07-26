@@ -35,6 +35,9 @@ int main(int argc, char **argv)
     av_hex_dump(stdout, buffer, 16); \*/
     printf("magic %llx\n", get_le64(pb));
     printf("Version : %d\n", get_byte(pb));
+    printf("Start PTS : %lld\n",get_le64(pb));
+    printf("Start DTS : %lld\n",get_le64(pb));
+    printf("Start Timecode : %02d:%02d:%02d:%02d\n", get_byte(pb), get_byte(pb), get_byte(pb), get_byte(pb));
     while (!url_feof(pb)) {
         printf("-----------------------\n");
         printf("pts %lld\n", get_le64(pb));

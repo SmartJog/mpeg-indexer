@@ -95,6 +95,12 @@ static int write_index(StreamContext *stcontext)
     qsort(stcontext->index, stcontext->frame_num, sizeof(Index), idx_sort_by_pts);
     put_le64(&indexpb, 0x534A2D494E444558LL);       // Magic number : SJ-INDEX in hex
     put_byte(&indexpb, 0x00000000);                 // Version
+    put_le64(&indexpb, stcontext->start_pts);                 // PTS of the first frame to be displayed
+    put_le64(&indexpb, stcontext->start_dts);                 // DTS of the first frame to be decoded
+    put_byte(&indexpb, stcontext->start_timecode.frames);     // Frame component of first diplayed frame's timecode
+    put_byte(&indexpb, stcontext->start_timecode.seconds);    // Seconds component of first diplayed frame's timecode
+    put_byte(&indexpb, stcontext->start_timecode.minutes);    // Minutes component of first diplayed frame's timecode
+    put_byte(&indexpb, stcontext->start_timecode.hours);      // Hours component of first diplayed frame's timecode
     for (i = 0; i < stcontext->frame_num; i++) {
         Index *idx = &stcontext->index[i];
         put_le64(&indexpb, idx->pts);               // PTS
