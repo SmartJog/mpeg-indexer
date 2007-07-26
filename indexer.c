@@ -184,7 +184,6 @@ static int parse_pic_timecode(Index *idx, TimeContext *tc, Index *last_in_gop, u
     idx->pic_type = (buf[1] >> 3) & 0x07;
 
 //  calculation of timecode for current frame
-    printf("timecode_generate : %d\n", tc->timecode_generate);
     if (tc->timecode_generate) {
         idx->timecode = last_in_gop->timecode;
         idx->timecode.frames += temp_ref + 1;
@@ -192,8 +191,6 @@ static int parse_pic_timecode(Index *idx, TimeContext *tc, Index *last_in_gop, u
         idx->timecode = tc->gop_time;
         idx->timecode.frames = tc->gop_time.frames + temp_ref;
     }
-    printf("temp_ref :  %d\n", temp_ref);
-//    printf("Idx-1 timecode :\t%02d:%02d:%02d:%02d\n", (idx-1)->timecode.hours, (idx-1)->timecode.minutes, (idx-1)->timecode.seconds, (idx-1)->timecode.frames);
 
     timecode_adjustment(idx, tc);
     printf("PIC timecode :\t\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
