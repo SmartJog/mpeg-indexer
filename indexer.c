@@ -35,6 +35,9 @@ typedef struct {
     int64_t current_pts;
     int64_t current_dts;
     int frame_duration;
+    int64_t start_dts;
+    int64_t start_pts;
+    int64_t start_timecode;
 } StreamContext;
 
 static int idx_sort_by_pts(const void *idx1, const void *idx2)
@@ -175,31 +178,25 @@ static int timecode_adjustment(Index *idx, TimeContext *tc)
     return 0;
 }
 
-static int generate_timecode(Index *idx, TimeContext *tc, Index *last_in_gop, uint8_t *buf)
-{
-    int temp_ref = (buf[0] << 2) | (buf[1] >> 6);
-    idx->pic_type = (buf[1] >> 3) & 0x07;
-
-    idx->timecode = last_in_gop->timecode;
-    idx->timecode.frames = last_in_gop->timecode.frames + temp_ref + 1;
-
-    timecode_adjustment(idx, tc);
-    
-    // printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
-    return 0;
-}
-
-static int parse_pic_timecode(Index *idx, TimeContext *tc, uint8_t *buf)
+static int parse_pic_timecode(Index *idx, TimeContext *tc, Index *last_in_gop, uint8_t *buf)
 {
     int temp_ref = (buf[0] << 2) | (buf[1] >> 6);
     idx->pic_type = (buf[1] >> 3) & 0x07;
 
 //  calculation of timecode for current frame
-    idx->timecode = tc->gop_time;
-    idx->timecode.frames = tc->gop_time.frames + temp_ref;
+    printf("timecode_generate : %d\n", tc->timecode_generate);
+    if (tc->timecode_generate) {
+        idx->timecode = last_in_gop->timecode;
+        idx->timecode.frames += temp_ref + 1;
+    } else {
+        idx->timecode = tc->gop_time;
+        idx->timecode.frames = tc->gop_time.frames + temp_ref;
+    }
+    printf("temp_ref :  %d\n", temp_ref);
+//    printf("Idx-1 timecode :\t%02d:%02d:%02d:%02d\n", (idx-1)->timecode.hours, (idx-1)->timecode.minutes, (idx-1)->timecode.seconds, (idx-1)->timecode.frames);
 
     timecode_adjustment(idx, tc);
-   //  printf("PIC timecode :\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
+    printf("PIC timecode :\t\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
     return 0;
 }
 
@@ -312,11 +309,7 @@ int main(int argc, char *argv[])
             }
             if (stcontext.need_pic) {
                 memcpy(data_buf + 2 - stcontext.need_pic, pkt.data, stcontext.need_pic);
-                if (tc.timecode_generate) {
-                    generate_timecode(&stcontext.index[stcontext.frame_num-1], &tc, last_in_gop, data_buf);
-                } else {
-                    parse_pic_timecode(&stcontext.index[stcontext.frame_num-1], &tc, data_buf);
-                }
+                parse_pic_timecode(&stcontext.index[stcontext.frame_num-1], &tc, last_in_gop, data_buf);
                 stcontext.need_pic = 0;
                 assert(stcontext.index[stcontext.frame_num-1].pic_type > 0 &&
                        stcontext.index[stcontext.frame_num-1].pic_type < 4);
@@ -352,11 +345,7 @@ int main(int argc, char *argv[])
                     idx->pes_offset = i < 3 ? last_pkt_offset : pkt_offset;
 
                     if (!stcontext.need_pic) {
-                        if (tc.timecode_generate) {
-                            generate_timecode(idx, &tc, last_in_gop, data_buf);
-                        } else {
-                            parse_pic_timecode(idx, &tc, data_buf);
-                        }
+                        parse_pic_timecode(idx, &tc, last_in_gop, data_buf);
                     }
                     idx_set_timestamps(&stcontext, idx, &pkt, st);
                     stcontext.frame_num++;
