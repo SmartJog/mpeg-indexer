@@ -166,18 +166,6 @@ static av_always_inline int adjust_timecode(Index *idx, TimeContext *tc)
     return 0; 
 }
 
-static int timecode_adjustment(Index *idx, TimeContext *tc)
-{
-    adjust_timecode(idx, tc);
-
-    if (tc->drop_mode && idx->timecode.minutes % 10 && idx->timecode.minutes != tc->gop_time.minutes) {
-        printf ("dropping numbers 0 and 1 from timecode count\n");
-        idx->timecode.frames += 2;
-        adjust_timecode(idx, tc);
-    }
-    return 0;
-}
-
 static int parse_pic_timecode(Index *idx, TimeContext *tc, Index *last_in_gop, uint8_t *buf)
 {
     int temp_ref = (buf[0] << 2) | (buf[1] >> 6);
@@ -191,8 +179,13 @@ static int parse_pic_timecode(Index *idx, TimeContext *tc, Index *last_in_gop, u
         idx->timecode = tc->gop_time;
         idx->timecode.frames = tc->gop_time.frames + temp_ref;
     }
+    adjust_timecode(idx, tc);
 
-    timecode_adjustment(idx, tc);
+    if (tc->drop_mode && idx->timecode.minutes % 10 && idx->timecode.minutes != tc->gop_time.minutes) {
+        printf ("dropping numbers 0 and 1 from timecode count\n");
+        idx->timecode.frames += 2;
+        adjust_timecode(idx, tc);
+    }
     //printf("PIC timecode :\t\t%02d:%02d:%02d:%02d\n", idx->timecode.hours, idx->timecode.minutes, idx->timecode.seconds, idx->timecode.frames);
     return 0;
 }
