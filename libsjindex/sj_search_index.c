@@ -148,7 +148,7 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t se
         int kf_pos = find_previous_key_frame(*sj_ic, mid);
         // if the same position is returned twice, then no matching index can be found 
         if (pos == kf_pos) {
-            return -2;
+            return -1;
         }
         pos = kf_pos;
         int i;
