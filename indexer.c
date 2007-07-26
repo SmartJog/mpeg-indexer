@@ -139,8 +139,10 @@ static av_always_inline int idx_set_timestamps(StreamContext *stc, Index *idx, A
 #define BUFFER_SIZE 262144
 static int check_timecode_presence(TimeContext *tc)
 {
-    if (!tc->gop_time.hours && !tc->gop_time.minutes && !tc->gop_time.seconds && !tc->gop_time.frames)
+    if (!tc->gop_time.hours && !tc->gop_time.minutes && !tc->gop_time.seconds && !tc->gop_time.frames) {
         tc->timecode_generate = 1;
+        printf("No timecode present in stream, generating timecode from 00:00:00:00\n");
+    }
 
     return 0;
 }
