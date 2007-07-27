@@ -11,7 +11,7 @@ int main(int argc, char **argv)
     Index read_idx;
     Index key_frame;
     uint64_t search_val;
-    
+
     memset(&key_frame, 0, sizeof(key_frame));
     memset(&read_idx, 0, sizeof(read_idx));
     if (argc < 4) {
@@ -27,7 +27,8 @@ int main(int argc, char **argv)
             return 0;
         }
     }
-    
+
+    // Index file loading and checks 
     int load_res = sj_index_load(argv[2], &sj_ic);
     if (load_res == -1) {
         printf("File could not be open\n");
@@ -46,8 +47,11 @@ int main(int argc, char **argv)
     printf("Index size : %lld\n", sj_ic.size);
     search_val = atoll(argv[3]);
     uint64_t flags = atoll(argv[1]);
-    int res = sj_index_search(&sj_ic, search_val, &read_idx, &key_frame, flags);
 
+    // Search
+    int res = sj_index_search(&sj_ic, search_val, &read_idx, &key_frame, flags);
+    
+    // Check search result
     if (res == -1){
         printf("Frame could not be found, check input data\n");
         return -2;
@@ -58,13 +62,9 @@ int main(int argc, char **argv)
         return -4;
     }
 
-/*    if (res == -1) {
-        printf("Video starts at\ntimecode\t%02d:%02d:%02d:%02d\nPTS\t\t%lld\nDTS\t\t%lld\n", sj_ic.indexes[0].timecode.hours, sj_ic.indexes[0].timecode.minutes, sj_ic.indexes[0].timecode.seconds, sj_ic.indexes[0].timecode.frames, sj_ic.indexes[0].pts, sj_ic.indexes[0].dts);
-        return -1;
-    }*/
-    
     printf("Frame %c : \t\ntimecode\t%02d:%02d:%02d:%02d\nPTS\t\t%lld\nDTS\t\t%lld\nPES-OFFSET\t\t%lld\n", sj_index_get_frame_type(read_idx) ,read_idx.timecode.hours, read_idx.timecode.minutes, read_idx.timecode.seconds, read_idx.timecode.frames, read_idx.pts, read_idx.dts, read_idx.pes_offset);
     printf("Related key-frame : \t\ntimecode\t%02d:%02d:%02d:%02d\nPTS\t\t%lld\nDTS\t\t%lld\nPES-OFFSET\t\t%lld\n", key_frame.timecode.hours,key_frame.timecode.minutes, key_frame.timecode.seconds, key_frame.timecode.frames, key_frame.pts, key_frame.dts, key_frame.pes_offset);
     sj_index_unload(&sj_ic);
+    
     return 0;
 }
