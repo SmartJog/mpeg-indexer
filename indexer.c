@@ -1,6 +1,6 @@
 /*
  * Indexer takes a Mpeg file as first argument and the name of an output file as second argument
- * it then creates an Index file of the initial mpeg stream containing for each frame 
+ * it then creates an Index file of the initial mpeg stream containing for each frame
  * its timecode, pts, dts, pes offset and type of encoding (I, P, B)
  *
  */
@@ -175,7 +175,7 @@ static av_always_inline int adjust_timecode(Index *idx, TimeContext *tc)
 
     while (idx->timecode.hours >= 24)
         idx->timecode.hours = 0; // what to do ?
-    return 0; 
+    return 0;
 }
 
 static int parse_pic_timecode(Index *idx, TimeContext *tc, Index *last_in_gop, uint8_t *buf)
@@ -210,13 +210,13 @@ static int calculate_pts_from_dts(StreamContext *stc)
         if (stc->index[i].pic_type != 3 && stc->index[j].pic_type != 3) {
             stc->index[i].pts = stc->index[j].dts;
             stc->start_pts = FFMIN(stc->start_pts, stc->index[i].pts);
-            stc->start_timecode = timecode_min(stc->start_timecode, stc->index[i].timecode); 
+            stc->start_timecode = timecode_min(stc->start_timecode, stc->index[i].timecode);
             i++;
             j++;
         }
         while (i < stc->frame_num && stc->index[i].pic_type == 3) {
             stc->start_pts = FFMIN(stc->start_pts, stc->index[i].pts);
-            stc->start_timecode = timecode_min(stc->start_timecode, stc->index[i].timecode); 
+            stc->start_timecode = timecode_min(stc->start_timecode, stc->index[i].timecode);
             i++;
         }
         while (j < stc->frame_num && stc->index[j].pic_type == 3) {

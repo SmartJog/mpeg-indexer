@@ -8,8 +8,8 @@ First frame number                                          -> 8 bits
 First second number                                         -> 8 bits
 First minute number                                         -> 8 bits
 First hours number                                          -> 8 bits
-Index Data : 
-        PTS                                                 -> 64 bits 
+Index Data :
+        PTS                                                 -> 64 bits
         DTS                                                 -> 64 bits
         PES offset                                          -> 64 bits
         Frame Type                                          -> 8 bits

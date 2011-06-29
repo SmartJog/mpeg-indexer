@@ -26,8 +26,8 @@ typedef struct {
 } SJ_IndexContext;
 
 /**
- * Reads the content of an index file and initialises the SJ_IndexContext 
- * with the file's content. 
+ * Reads the content of an index file and initialises the SJ_IndexContext
+ * with the file's content.
  */
 int sj_index_load(char *filename, SJ_IndexContext *sj_ic);
 
@@ -47,12 +47,12 @@ char sj_index_get_frame_type(Index idx);
  * idx is the corresponding index if it was found.
  * key_frame is the related key_frame's index needed to decode the frame referenced by idx.
  *
- * The type of the value the function should look for is determined by mode : 
+ * The type of the value the function should look for is determined by mode :
  *      if mode = SJ_INDEX_TIMECODE_SEARCH then the function will look for a index with a timecode equal to search_time
  *      if mode = SJ_INDEX_PTS_SEARCH then the function will look for a index with a pts equal to search_time
  *      if mode = SJ_INDEX_DTS_SEARCH then the function will look for a index with a dts equal to search_time
  */
 int sj_index_search(SJ_IndexContext *sj_ic, uint64_t search_time, Index *idx, Index *key_frame, uint64_t mode);
 
-#endif /* SJ_SEARCH_H */ 
+#endif /* SJ_SEARCH_H */
 

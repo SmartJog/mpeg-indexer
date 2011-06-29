@@ -1,7 +1,7 @@
 /*
  * sj_search_index.c defines a set of functions used to find
  * the PES offset of a frame given an Index file and a time reference
- * 
+ *
  */
 #include <ffmpeg/avformat.h>
 #include <stdlib.h>
@@ -28,7 +28,7 @@ int sj_index_load(char *filename, SJ_IndexContext *sj_ic)
 {
     ByteIOContext pb;
     register_protocol(&file_protocol);
-    
+
     if (url_fopen(&pb, filename, URL_RDONLY) < 0) {
         // file could not be open
         return -1;
@@ -59,7 +59,7 @@ int sj_index_load(char *filename, SJ_IndexContext *sj_ic)
 
     for(int i = 0; i < sj_ic->index_num; i++) {
         read_index(&sj_ic->indexes[i], &pb);
-    } 
+    }
     url_fclose(&pb);
     return 0;
 }
@@ -87,7 +87,7 @@ static av_always_inline uint64_t get_search_value(Index idx, int mode)
 
 static int find_I_frame(Index *key_frame, SJ_IndexContext sj_ic, int index_pos)
 {
-    // if the next I_frame has a dts inferior to the searched dts then this I_frame is the related key_frame 
+    // if the next I_frame has a dts inferior to the searched dts then this I_frame is the related key_frame
     for (int i = index_pos; i < sj_ic.index_num; i++){
         if (sj_ic.indexes[i].pic_type == FF_I_TYPE && sj_ic.indexes[i].dts < sj_ic.indexes[index_pos].dts) {
             *key_frame = sj_ic.indexes[i];
@@ -128,7 +128,7 @@ static int search_frame(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t search
     return -1;
 }
 
-// if there are no P or I frame before pos, function returns -1 
+// if there are no P or I frame before pos, function returns -1
 static av_always_inline int find_previous_key_frame(SJ_IndexContext sj_ic, int pos)
 {
     int i;
@@ -146,7 +146,7 @@ static int search_frame_dts(SJ_IndexContext *sj_ic, Index *read_idx, uint64_t se
     while (1) {
         mid = (high + low) / 2;
         int kf_pos = find_previous_key_frame(*sj_ic, mid);
-        // if the same position is returned twice, then no matching index can be found 
+        // if the same position is returned twice, then no matching index can be found
         if (pos == kf_pos) {
             return -1;
         }

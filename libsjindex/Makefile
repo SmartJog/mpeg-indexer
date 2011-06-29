@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-fPIC -DPIC -Wall -g -std=c99
 LIBFLAGS=-shared -Wl
-LDFLAGS=-lavformat -lavcodec -lavutil -lm 
+LDFLAGS=-lavformat -lavcodec -lavutil -lm
 DESTDIR = /usr/local/lib
 
 MAJOR 		= 0
@@ -12,7 +12,7 @@ LIBSONAME_MAJOR = libsjindex.so.$(MAJOR)
 LIBSONAME_FULL  = libsjindex.so.$(MAJOR).$(MINOR).$(PATCH_LEVEL)
 LIBSONAME 		= libsjindex.so
 
-all:	$(LIBSONAME_FULL)	
+all:	$(LIBSONAME_FULL)
 
 .c.o:
 		$(CC) $(CFLAGS) -c $< -o $@
@@ -22,15 +22,15 @@ $(LIBSONAME_FULL):	sj_search_index.o
 
 cleanall:	clean
 
-install: 
+install:
 		install -d $(DESTDIR)
-		install -m 755 $(LIBSONAME_FULL) $(DESTDIR) 
+		install -m 755 $(LIBSONAME_FULL) $(DESTDIR)
 		ln -sf $(LIBSONAME_FULL) $(DESTDIR)/$(LIBSONAME_MAJOR)
 		ln -sf $(LIBSONAME_MAJOR) $(DESTDIR)/$(LIBSONAME)
 
 clean:
 		rm -f *.o *~
-		rm -f *.so* 
+		rm -f *.so*
 
 tags:
 		etags *.c *.h
